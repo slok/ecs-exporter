@@ -1,4 +1,4 @@
-package config
+package main
 
 import (
 	"flag"
@@ -15,15 +15,15 @@ const (
 )
 
 // Cfg is the global configuration
-var Cfg *Config
+var cfg *config
 
 // Parse global config
-func Parse(args []string) error {
-	return Cfg.Parse(args)
+func parse(args []string) error {
+	return cfg.parse(args)
 }
 
 // Config represents an app configuration
-type Config struct {
+type config struct {
 	fs *flag.FlagSet
 
 	listenAddress string
@@ -33,12 +33,12 @@ type Config struct {
 
 // init will load all the flags
 func init() {
-	Cfg = New()
+	cfg = new()
 }
 
 // New returns an initialized config
-func New() *Config {
-	c := &Config{
+func new() *config {
+	c := &config{
 		fs: flag.NewFlagSet(os.Args[0], flag.ContinueOnError),
 	}
 
@@ -54,8 +54,8 @@ func New() *Config {
 	return c
 }
 
-// Parse parses the flags for configuration
-func (c *Config) Parse(args []string) error {
+// parse parses the flags for configuration
+func (c *config) parse(args []string) error {
 	log.Debugf("Parsing flags...")
 
 	err := c.fs.Parse(args)

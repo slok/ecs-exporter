@@ -1,4 +1,4 @@
-package config
+package main
 
 import (
 	"testing"
@@ -19,8 +19,8 @@ func TestConfigParse(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		c := New()
-		err := c.Parse(test.cmd)
+		c := new()
+		err := c.parse(test.cmd)
 		if err != nil && test.ok {
 			t.Errorf("\n- %v\n- Cmd parsing shoudn't fail, it did: %v", test, err)
 		}
