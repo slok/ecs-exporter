@@ -1,9 +1,8 @@
-package exporter
+package collector
 
 import (
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/golang/mock/gomock"
 	awsMock "github.com/slok/ecs-exporter/mock/aws"
 	"github.com/slok/ecs-exporter/mock/aws/sdk"
@@ -55,8 +54,8 @@ func TestGetClusters(t *testing.T) {
 			}
 
 			for i := 0; i < len(cs); i++ {
-				if aws.StringValue(cs[i]) != test.ids[i] {
-					t.Errorf("\n- %v\n-  Id in cluster is wrong, want: %s; got: %s", test, test.ids[i], aws.StringValue(cs[i]))
+				if cs[i] != test.ids[i] {
+					t.Errorf("\n- %v\n-  Id in cluster is wrong, want: %s; got: %s", test, test.ids[i], cs[i])
 				}
 			}
 

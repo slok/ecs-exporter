@@ -1,4 +1,4 @@
-package exporter
+package collector
 
 import (
 	"fmt"
@@ -33,8 +33,8 @@ func NewECSClient(awsRegion string) (*ECSClient, error) {
 }
 
 // GetClusterIDs will get the clusters from the ECS API
-func (e *ECSClient) GetClusterIDs() ([]*string, error) {
-	clusters := []*string{}
+func (e *ECSClient) GetClusterIDs() ([]string, error) {
+	clusters := []string{}
 	params := &ecs.ListClustersInput{
 		MaxResults: aws.Int64(e.apiMaxResults),
 	}
@@ -47,7 +47,7 @@ func (e *ECSClient) GetClusterIDs() ([]*string, error) {
 		}
 
 		for _, c := range resp.ClusterArns {
-			clusters = append(clusters, c)
+			clusters = append(clusters, aws.StringValue(c))
 		}
 		if resp.NextToken == nil || aws.StringValue(resp.NextToken) == "" {
 			break
@@ -55,4 +55,9 @@ func (e *ECSClient) GetClusterIDs() ([]*string, error) {
 		params.NextToken = resp.NextToken
 	}
 	return clusters, nil
+}
+
+// GetClusterServices will return all the services from a cluster
+func (e *ECSClient) GetClusterServices(clusterArn string) ([]*ecs.Service, error) {
+	return []*ecs.Service{}, nil
 }
