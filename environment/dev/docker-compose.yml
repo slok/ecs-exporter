@@ -1,0 +1,22 @@
+version: "2"
+services:
+  ecs-exporter:
+    build:
+      context: ../..
+      dockerfile: environment/dev/Dockerfile
+    volumes:
+      - ../..:/go/src/github.com/slok/ecs-exporter
+      - ~/.gitconfig:/home/exs-exporter/.gitignore:ro
+      - ~/.ssh:/home/ecs-exporter/.ssh:ro
+      - ~/.bash_history.ecs-exporter:/home/ecs-exporter/.bash_history
+    environment:
+      - ENVIRONMENT=local
+      - AWS_REGION
+      - AWS_DEFAULT_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+
+    command: "build.sh"
+    ports:
+      - "9222:9222"
