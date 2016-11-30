@@ -15,6 +15,3 @@ RUN chown -R ecs-exporter:ecs-exporter /go
 WORKDIR /go/src/github.com/slok/ecs-exporter/
 
 USER ecs-exporter
-
-# Install dependency manager
-RUN go get github.com/Masterminds/glide
