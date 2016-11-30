@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/prometheus/common/log"
+	"github.com/slok/ecs-exporter/log"
 )
 
 const (
 	defaultListenAddress = ":9222"
 	defaultAwsRegion     = ""
 	defaultMetricsPath   = "/metrics"
+	defaultDebug         = false
 )
 
 // Cfg is the global configuration
@@ -29,6 +30,7 @@ type config struct {
 	listenAddress string
 	awsRegion     string
 	metricsPath   string
+	debug         bool
 }
 
 // init will load all the flags
@@ -50,6 +52,9 @@ func new() *config {
 
 	c.fs.StringVar(
 		&c.metricsPath, "web.telemetry-path", defaultMetricsPath, "The path where metrics will be exposed")
+
+	c.fs.BoolVar(
+		&c.debug, "debug", defaultDebug, "Run exporter in debug mode")
 
 	return c
 }

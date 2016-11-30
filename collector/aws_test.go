@@ -141,7 +141,7 @@ func TestGetClusterServices(t *testing.T) {
 			client: mockECS,
 		}
 
-		services, err := e.GetClusterServices("test")
+		services, err := e.GetClusterServices(&types.ECSCluster{ID: "t1", Name: "test1"})
 
 		if !test.expectError {
 			if err != nil {

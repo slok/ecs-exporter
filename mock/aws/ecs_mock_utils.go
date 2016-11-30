@@ -7,8 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/golang/mock/gomock"
-	"github.com/prometheus/common/log"
 
+	"github.com/slok/ecs-exporter/log"
 	"github.com/slok/ecs-exporter/mock/aws/sdk"
 	"github.com/slok/ecs-exporter/types"
 )

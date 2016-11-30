@@ -70,3 +70,54 @@ func TestCollectClusterMetrics(t *testing.T) {
 		t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
 	}
 }
+
+func TestCollectClusterServiceMetrics(t *testing.T) {
+	region := "eu-west-1"
+	exp, err := New(region)
+	if err != nil {
+		t.Errorf("Creation of exporter shouldnt error: %v", err)
+	}
+
+	ch := make(chan prometheus.Metric)
+
+	testC := &types.ECSCluster{ID: "c1", Name: "cluster1"}
+	testSs := []*types.ECSService{
+		&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, PendingT: 5, RunningT: 5},
+		&types.ECSService{ID: "s2", Name: "service2", DesiredT: 15, PendingT: 5, RunningT: 10},
+		&types.ECSService{ID: "s3", Name: "service3", DesiredT: 30, PendingT: 27, RunningT: 0},
+		&types.ECSService{ID: "s4", Name: "service4", DesiredT: 51, PendingT: 50, RunningT: 1},
+		&types.ECSService{ID: "s5", Name: "service5", DesiredT: 109, PendingT: 99, RunningT: 2},
+		&types.ECSService{ID: "s6", Name: "service6", DesiredT: 6431, PendingT: 5000, RunningT: 107},
+	}
+	// Collect mocked metrics
+	go func() {
+		exp.collectClusterServicesMetrics(ch, testC, testSs)
+		close(ch)
+	}()
+
+	for _, wantS := range testSs {
+		// Check 1st received metric  per service (desired)
+		m := (<-ch).(prometheus.Metric)
+		m2 := readGauge(m)
+		want := float64(wantS.DesiredT)
+		if m2.value != want {
+			t.Errorf("expected %f service_desired_tasks, got %f", want, m2.value)
+		}
+
+		// Check 1st received metric  per service (pending)
+		m = (<-ch).(prometheus.Metric)
+		m2 = readGauge(m)
+		want = float64(wantS.PendingT)
+		if m2.value != want {
+			t.Errorf("expected %f service_pending_tasks, got %f", want, m2.value)
+		}
+
+		// Check 1st received metric  per service (running)
+		m = (<-ch).(prometheus.Metric)
+		m2 = readGauge(m)
+		want = float64(wantS.RunningT)
+		if m2.value != want {
+			t.Errorf("expected %f service_running_tasks, got %f", want, m2.value)
+		}
+	}
+}

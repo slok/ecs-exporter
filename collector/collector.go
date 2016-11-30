@@ -4,9 +4,9 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 
+	"github.com/slok/ecs-exporter/log"
 	"github.com/slok/ecs-exporter/types"
 )
 
@@ -26,6 +26,24 @@ var (
 		prometheus.BuildFQName(namespace, "", "cluster_total"),
 		"The total number of clusters",
 		[]string{"region"}, nil,
+	)
+
+	serviceDesired = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "service_desired_tasks"),
+		"The desired number of instantiations of the task definition to keep running regarding a service",
+		[]string{"region", "cluster", "service"}, nil,
+	)
+
+	servicePending = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "service_pending_tasks"),
+		"The number of tasks in the cluster that are in the PENDING state regarding a service",
+		[]string{"region", "cluster", "service"}, nil,
+	)
+
+	serviceRunning = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "service_running_tasks"),
+		"The number of tasks in the cluster that are in the RUNNING state regarding a service",
+		[]string{"region", "cluster", "service"}, nil,
 	)
 )
 
@@ -79,6 +97,19 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.collectClusterMetrics(ch, cs)
 
 	// Get services
+	// TODO: make this in parallel
+	for _, c := range cs {
+		ss, err := e.client.GetClusterServices(c)
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(
+				up, prometheus.GaugeValue, 0, e.region,
+			)
+
+			log.Errorf("Error collecting metrics: %v", err)
+			return
+		}
+		e.collectClusterServicesMetrics(ch, c, ss)
+	}
 
 	// Seems everything went ok
 	ch <- prometheus.MustNewConstMetric(
@@ -87,9 +118,30 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *Exporter) collectClusterMetrics(ch chan<- prometheus.Metric, clusters []*types.ECSCluster) {
+	// Total cluster count
 	ch <- prometheus.MustNewConstMetric(
 		clusterCount, prometheus.GaugeValue, float64(len(clusters)), e.region,
 	)
+}
+
+func (e *Exporter) collectClusterServicesMetrics(ch chan<- prometheus.Metric, cluster *types.ECSCluster, services []*types.ECSService) {
+
+	for _, s := range services {
+		// Desired task count
+		ch <- prometheus.MustNewConstMetric(
+			serviceDesired, prometheus.GaugeValue, float64(s.DesiredT), e.region, cluster.Name, s.Name,
+		)
+
+		// Pending task count
+		ch <- prometheus.MustNewConstMetric(
+			servicePending, prometheus.GaugeValue, float64(s.PendingT), e.region, cluster.Name, s.Name,
+		)
+
+		// Running task count
+		ch <- prometheus.MustNewConstMetric(
+			serviceRunning, prometheus.GaugeValue, float64(s.RunningT), e.region, cluster.Name, s.Name,
+		)
+	}
 }
 
 func init() {

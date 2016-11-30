@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
 
+	"github.com/slok/ecs-exporter/log"
 	"github.com/slok/ecs-exporter/types"
 )
 
@@ -42,6 +43,7 @@ func (e *ECSClient) GetClusters() ([]*types.ECSCluster, error) {
 	}
 
 	// Get cluster IDs
+	log.Debugf("Getting cluster list for region")
 	for {
 		resp, err := e.client.ListClusters(params)
 		if err != nil {
@@ -67,6 +69,7 @@ func (e *ECSClient) GetClusters() ([]*types.ECSCluster, error) {
 	}
 
 	cs := []*types.ECSCluster{}
+	log.Debugf("Getting cluster descriptions")
 	for _, c := range resp2.Clusters {
 		ec := &types.ECSCluster{
 			ID:   aws.StringValue(c.ClusterArn),
@@ -79,15 +82,17 @@ func (e *ECSClient) GetClusters() ([]*types.ECSCluster, error) {
 }
 
 // GetClusterServices will return all the services from a cluster
-func (e *ECSClient) GetClusterServices(clusterArn string) ([]*types.ECSService, error) {
+func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSService, error) {
+
 	sArns := []*string{}
 
 	// Get service ids
 	params := &ecs.ListServicesInput{
-		Cluster:    aws.String(clusterArn),
+		Cluster:    aws.String(cluster.ID),
 		MaxResults: aws.Int64(e.apiMaxResults),
 	}
 
+	log.Debugf("Getting service list for cluster: %s", cluster.Name)
 	for {
 		resp, err := e.client.ListServices(params)
 		if err != nil {
@@ -105,15 +110,24 @@ func (e *ECSClient) GetClusterServices(clusterArn string) ([]*types.ECSService, 
 	}
 
 	// Get service descriptions
+	ss := []*types.ECSService{}
+
+	// If no services then nothing to fetch
+	if len(sArns) == 0 {
+		log.Debugf("Ignoring services fetching, no services in cluster: %s", cluster.Name)
+		return ss, nil
+	}
+
 	params2 := &ecs.DescribeServicesInput{
 		Services: sArns,
+		Cluster:  aws.String(cluster.ID),
 	}
 	resp2, err := e.client.DescribeServices(params2)
 	if err != nil {
 		return nil, err
 	}
 
-	ss := []*types.ECSService{}
+	log.Debugf("Getting service descriptions for cluster: %s", cluster.Name)
 	for _, s := range resp2.Services {
 		es := &types.ECSService{
 			ID:       aws.StringValue(s.ServiceArn),
