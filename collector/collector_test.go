@@ -1,10 +1,12 @@
 package collector
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/slok/ecs-exporter/types"
 )
 
 type metricResult struct {
@@ -38,7 +40,14 @@ func TestCollectClusterMetrics(t *testing.T) {
 	}
 
 	ch := make(chan prometheus.Metric)
-	testCs := []string{"c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"}
+	testCs := []*types.ECSCluster{}
+	for i := 0; i < 10; i++ {
+		c := &types.ECSCluster{
+			Name: fmt.Sprintf("cluster%d", i),
+			ID:   fmt.Sprintf("c%d", i),
+		}
+		testCs = append(testCs, c)
+	}
 
 	// Collect mocked metrics
 	go exp.collectClusterMetrics(ch, testCs)
@@ -46,7 +55,7 @@ func TestCollectClusterMetrics(t *testing.T) {
 	m := (<-ch).(prometheus.Metric)
 	m2 := readGauge(m)
 
-	expectedV := 9.0
+	expectedV := 10.0
 	// Check colected metrics are ok
 	if m2.value != expectedV {
 		t.Errorf("expected %f cluster_total, got %f", expectedV, m2.value)

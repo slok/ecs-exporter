@@ -6,6 +6,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
+
+	"github.com/slok/ecs-exporter/types"
 )
 
 const (
@@ -65,7 +67,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	defer e.Unlock()
 
 	// Get clusters
-	cIDs, err := e.client.GetClusterIDs()
+	cs, err := e.client.GetClusters()
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(
 			up, prometheus.GaugeValue, 0, e.region,
@@ -74,7 +76,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		log.Errorf("Error collecting metrics: %v", err)
 		return
 	}
-	e.collectClusterMetrics(ch, cIDs)
+	e.collectClusterMetrics(ch, cs)
 
 	// Get services
 
@@ -84,9 +86,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func (e *Exporter) collectClusterMetrics(ch chan<- prometheus.Metric, clusterIDs []string) {
+func (e *Exporter) collectClusterMetrics(ch chan<- prometheus.Metric, clusters []*types.ECSCluster) {
 	ch <- prometheus.MustNewConstMetric(
-		clusterCount, prometheus.GaugeValue, float64(len(clusterIDs)), e.region,
+		clusterCount, prometheus.GaugeValue, float64(len(clusters)), e.region,
 	)
 }
 
