@@ -1,5 +1,5 @@
 # The following are targers that do not exist in the filesystem as real files and should be always executed by make
-.PHONY: default deps login base build dev shell start stop image push test
+.PHONY: default deps base build dev shell start stop image push test build_release dep_update dep_install vet test gogen
 
 # Name of this service/application
 SERVICE_NAME := ecs-exporter
@@ -16,9 +16,6 @@ UID := $(shell id -u)
 # Get the username of theuser running make. On the devbox, we give priority to /etc/username
 USERNAME ?= $(shell ( [ -f /etc/username ] && cat /etc/username  ) || whoami)
 
-# File to keep track of the last login to the docker registry, so that login is not ran every time
-LOGIN_FILE := ~/.devlogin
-
 # Bash history file for container shell
 HISTORY_FILE := ~/.bash_history.$(SERVICE_NAME)
 
@@ -28,11 +25,8 @@ BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 # Commit hash from git
 COMMIT=$(shell git rev-parse --short HEAD)
 
-# Remove login flag if older than 10 hours
-_ := $(shell find $(LOGIN_FILE) -mmin +600 -delete)
-
-# The default action of this Makefile is to build the development docker image
-default: build
+# The default action of this Makefile is to build the release
+default: build_release
 
 
 # Build the base docker image which is shared between the development and production images
