@@ -4,10 +4,14 @@ Export AWS ECS cluster metrics to Prometheus
 
 ```bash
 make
-./bin/ecs-exporter --aws.region="{AWS_REGION}"
+./bin/ecs-exporter --aws.region="${AWS_REGION}"
 ```
 
-This exporter will listen by default on the port `9222`
+## Notes:
+
+* This exporter will listen by default on the port `9222`
+* Requires AWS credentials or permission from an EC2 instance
+
 
 ## Exported Metrics
 
@@ -28,7 +32,9 @@ This exporter will listen by default on the port `9222`
 
 ## Docker
 
-You can deploy this exporter using the [slok/ecs-exporter]() Docker image.
+You can deploy this exporter using the [slok/ecs-exporter](https://hub.docker.com/r/slok/ecs-exporter/) Docker image.
+
+Note: Requires AWS credentials or permission from an EC2 instance, for example you can pass the env vars using `-e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}` options
 
 For example:
 

@@ -88,9 +88,11 @@ gogen: build
 image: base
 	docker build \
 	--label version=$(COMMIT) \
-	-t $(SERVICE_NAME) \
-	-t $(REPOSITORY):latest \
-	-t $(REPOSITORY):$(COMMIT) \
-	-t $(REPOSITORY):$(BRANCH) \
+	-t $(IMAGE_NAME):latest \
 	-f environment/prod/Dockerfile \
-	environment/prod
+	./
+
+push: image
+	@docker login -u ${DOCKER_HUB_USERNAME} -p ${DOCKER_HUB_PASSWORD} && \
+		docker push $(IMAGE_NAME) && \
+		rm -rf ${HOME}/.docker
