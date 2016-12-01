@@ -87,7 +87,8 @@ gogen: build
 # Build the production image
 image: base
 	docker build \
-	--label version=$(COMMIT) \
+	--label revision=$(COMMIT) \
+	--label branch=$(BRANCH) \
 	-t $(IMAGE_NAME):latest \
 	-f environment/prod/Dockerfile \
 	./
