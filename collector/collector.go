@@ -2,6 +2,7 @@ package collector
 
 import (
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -12,6 +13,7 @@ import (
 
 const (
 	namespace = "ecs"
+	timeout   = 10 * time.Second
 )
 
 // Metrics descriptions
@@ -49,9 +51,9 @@ var (
 
 // Exporter collects ECS clusters metrics
 type Exporter struct {
-	sync.Mutex            // Our exporter object will be locakble to protect from concurrent scrapes
-	client     *ECSClient // Custom ECS client to get informationfrom the clusters
-	region     string     // The region where the exporter will scrape
+	sync.Mutex             // Our exporter object will be locakble to protect from concurrent scrapes
+	client     ECSGatherer // Custom ECS client to get information from the clusters
+	region     string      // The region where the exporter will scrape
 }
 
 // New returns an initialized exporter
@@ -97,23 +99,38 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.collectClusterMetrics(ch, cs)
 
 	// Get services
-	// TODO: make this in parallel
-	for _, c := range cs {
-		ss, err := e.client.GetClusterServices(c)
-		if err != nil {
-			ch <- prometheus.MustNewConstMetric(
-				up, prometheus.GaugeValue, 0, e.region,
-			)
+	errC := make(chan bool)
 
-			log.Errorf("Error collecting metrics: %v", err)
-			return
-		}
-		e.collectClusterServicesMetrics(ch, c, ss)
+	for _, c := range cs {
+		go func(c types.ECSCluster) {
+			ss, err := e.client.GetClusterServices(&c)
+			if err != nil {
+				errC <- true
+				log.Errorf("Error collecting metrics: %v", err)
+				return
+			}
+			e.collectClusterServicesMetrics(ch, &c, ss)
+			errC <- false
+		}(*c)
 	}
 
-	// Seems everything went ok
+	// Grab result or not result error for each goroutine, on first error exit
+	result := float64(1)
+	for i := 0; i < len(cs); i++ {
+		select {
+		case err := <-errC:
+			if err {
+				result = 0
+				break
+			}
+		case <-time.After(timeout):
+			log.Errorf("Error collecting metrics: Timeout making calls, waited for %v  without response", timeout)
+			result = 0
+		}
+
+	}
 	ch <- prometheus.MustNewConstMetric(
-		up, prometheus.GaugeValue, 1, e.region,
+		up, prometheus.GaugeValue, result, e.region,
 	)
 }
 

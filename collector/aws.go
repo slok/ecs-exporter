@@ -12,6 +12,12 @@ import (
 	"github.com/slok/ecs-exporter/types"
 )
 
+// ECSGatherer is the interface that implements the methods required to gather ECS data
+type ECSGatherer interface {
+	GetClusters() ([]*types.ECSCluster, error)
+	GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSService, error)
+}
+
 // Generate ECS API mocks running go generate
 //go:generate mockgen -source ../vendor/github.com/aws/aws-sdk-go/service/ecs/ecsiface/interface.go -package sdk -destination ../mock/aws/sdk/ecsiface_mock.go
 

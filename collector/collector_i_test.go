@@ -3,43 +3,71 @@
 package collector
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/prometheus/client_golang/prometheus"
-	awsMock "github.com/slok/ecs-exporter/mock/aws"
-	"github.com/slok/ecs-exporter/mock/aws/sdk"
 	"github.com/slok/ecs-exporter/types"
 )
+
+type ECSMockClient struct {
+	cdError bool                           // Should error on cluster descriptions
+	sdError bool                           // Should error on service descriptions
+	sd      map[string][]*types.ECSService // Cluster service descriptions
+}
+
+func (e *ECSMockClient) GetClusters() ([]*types.ECSCluster, error) {
+	if e.cdError {
+		return nil, fmt.Errorf("GetClusters Error: wanted")
+	}
+
+	// Group clusters
+	cd := []*types.ECSCluster{}
+	for k, _ := range e.sd {
+		cd = append(cd, &types.ECSCluster{ID: k, Name: k})
+	}
+
+	return cd, nil
+}
+
+func (e *ECSMockClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSService, error) {
+	if e.sdError {
+		return nil, fmt.Errorf("GetClusterServices Error: wanted")
+	}
+
+	// return the correct services
+	ss, ok := e.sd[cluster.ID]
+
+	if !ok {
+		return nil, fmt.Errorf("GetClusterServices Error: not valid cluster %s", cluster.ID)
+	}
+	return ss, nil
+}
 
 func TestCollectError(t *testing.T) {
 
 	tests := []struct {
-		errorListClusters     bool
 		errorDescribeClusters bool
-		errorListServices     bool
 		errorDescribeServices bool
 	}{
-		{true, false, false, false},
-		{false, true, false, false},
-		{false, false, true, false},
-		{false, false, false, true},
+		{true, false},
+		{false, true},
 	}
 
 	for _, test := range tests {
 
-		// Mock the AWS API
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		mockECS := sdk.NewMockECSAPI(ctrl)
-		awsMock.MockECSListClusters(t, mockECS, test.errorListClusters, "test")
-		awsMock.MockECSDescribeClusters(t, mockECS, test.errorDescribeClusters, &types.ECSCluster{ID: "t1", Name: "test1"})
-		awsMock.MockECSListServices(t, mockECS, test.errorListServices, "test")
-		awsMock.MockECSDescribeServices(t, mockECS, test.errorDescribeServices, &types.ECSService{ID: "t1", Name: "test1"})
-		e := &ECSClient{client: mockECS}
+		e := &ECSMockClient{
+			cdError: test.errorDescribeClusters,
+			sdError: test.errorDescribeServices,
+			sd: map[string][]*types.ECSService{ // At least 1 to check the service description call
+				"cluster0": []*types.ECSService{
+					&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, RunningT: 4, PendingT: 6},
+				},
+			},
+		}
 
 		exp, err := New("eu-west-1")
 		if err != nil {
@@ -77,11 +105,50 @@ func TestCollectError(t *testing.T) {
 	}
 }
 
-func TestCollect(t *testing.T) {
+func TestCollectOk(t *testing.T) {
 	tests := []struct {
 		cServices map[string][]*types.ECSService
 		want      []string
 	}{
+		{
+			cServices: map[string][]*types.ECSService{
+				"c1uster1": {
+					&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, RunningT: 4, PendingT: 6}},
+			},
+			want: []string{
+				`ecs_up{region="eu-west-1"} 1`,
+				`ecs_cluster_total{region="eu-west-1"} 1`,
+
+				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 10`,
+				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 4`,
+				`ecs_service_pending_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 6`,
+			},
+		},
+		{
+			cServices: map[string][]*types.ECSService{
+				"c1uster1": {
+					&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, RunningT: 4, PendingT: 6},
+					&types.ECSService{ID: "s2", Name: "service2", DesiredT: 987, RunningT: 67, PendingT: 62},
+					&types.ECSService{ID: "s3", Name: "service3", DesiredT: 43, RunningT: 20, PendingT: 0},
+				},
+			},
+			want: []string{
+				`ecs_up{region="eu-west-1"} 1`,
+				`ecs_cluster_total{region="eu-west-1"} 1`,
+
+				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 10`,
+				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 4`,
+				`ecs_service_pending_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 6`,
+
+				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service2"} 987`,
+				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service2"} 67`,
+				`ecs_service_pending_tasks{cluster="c1uster1",region="eu-west-1",service="service2"} 62`,
+
+				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service3"} 43`,
+				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service3"} 20`,
+				`ecs_service_pending_tasks{cluster="c1uster1",region="eu-west-1",service="service3"} 0`,
+			},
+		},
 		{
 			cServices: map[string][]*types.ECSService{
 				"c1uster0": {&types.ECSService{ID: "s0", Name: "service0", DesiredT: 3, RunningT: 2, PendingT: 1}},
@@ -118,31 +185,6 @@ func TestCollect(t *testing.T) {
 				`ecs_service_desired_tasks{cluster="c1uster5",region="eu-west-1",service="service0"} 75`,
 				`ecs_service_running_tasks{cluster="c1uster5",region="eu-west-1",service="service0"} 50`,
 				`ecs_service_pending_tasks{cluster="c1uster5",region="eu-west-1",service="service0"} 25`,
-			},
-		},
-		{
-			cServices: map[string][]*types.ECSService{
-				"c1uster1": {
-					&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, RunningT: 4, PendingT: 6},
-					&types.ECSService{ID: "s2", Name: "service2", DesiredT: 987, RunningT: 67, PendingT: 62},
-					&types.ECSService{ID: "s3", Name: "service3", DesiredT: 43, RunningT: 20, PendingT: 0},
-				},
-			},
-			want: []string{
-				`ecs_up{region="eu-west-1"} 1`,
-				`ecs_cluster_total{region="eu-west-1"} 1`,
-
-				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 10`,
-				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 4`,
-				`ecs_service_pending_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 6`,
-
-				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service2"} 987`,
-				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service2"} 67`,
-				`ecs_service_pending_tasks{cluster="c1uster1",region="eu-west-1",service="service2"} 62`,
-
-				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service3"} 43`,
-				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service3"} 20`,
-				`ecs_service_pending_tasks{cluster="c1uster1",region="eu-west-1",service="service3"} 0`,
 			},
 		},
 		{
@@ -210,38 +252,7 @@ func TestCollect(t *testing.T) {
 
 	for _, test := range tests {
 
-		csl := []string{}
-		csd := []*types.ECSCluster{}
-		servsl := [][]string{}
-		servsd := [][]*types.ECSService{}
-
-		for c, css := range test.cServices {
-			// Cluster mocks
-			csl = append(csl, c)
-			csd = append(csd, &types.ECSCluster{ID: c, Name: c})
-
-			// Services mocks
-			sl := make([]string, len(css))
-			sd := make([]*types.ECSService, len(css))
-
-			for i, s := range css {
-				sl[i] = s.ID
-				sd[i] = s
-			}
-			servsl = append(servsl, sl)
-			servsd = append(servsd, sd)
-
-		}
-
-		// Mock the AWS API
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		mockECS := sdk.NewMockECSAPI(ctrl)
-		awsMock.MockECSListClusters(t, mockECS, false, csl...)
-		awsMock.MockECSDescribeClusters(t, mockECS, false, csd...)
-		awsMock.MockECSListServicesTimes(t, mockECS, false, servsl...)
-		awsMock.MockECSDescribeServicesTimes(t, mockECS, false, servsd...)
-		e := &ECSClient{client: mockECS}
+		e := &ECSMockClient{sd: test.cServices}
 
 		exp, err := New("eu-west-1")
 		if err != nil {
