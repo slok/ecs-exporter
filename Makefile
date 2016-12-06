@@ -25,6 +25,9 @@ BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 # Commit hash from git
 COMMIT=$(shell git rev-parse --short HEAD)
 
+# Tag on this commit
+TAG ?= $(shell git describe --tags --exact-match)
+
 # The default action of this Makefile is to build the release
 default: build_release
 
@@ -93,7 +96,13 @@ image: base
 	-f environment/prod/Dockerfile \
 	./
 
-push: image
+# Will build the image and tag with a release if available
+image-release: image
+ifneq ($(TAG),)
+	docker tag $(IMAGE_NAME):latest $(IMAGE_NAME):$(TAG)
+endif
+
+push: image-release
 	@docker login -u ${DOCKER_HUB_USERNAME} -p ${DOCKER_HUB_PASSWORD} && \
 		docker push $(IMAGE_NAME) && \
 		rm -rf ${HOME}/.docker
