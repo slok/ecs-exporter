@@ -118,6 +118,7 @@ func TestCollectOk(t *testing.T) {
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_cluster_total{region="eu-west-1"} 1`,
+				`ecs_service_total{cluster="c1uster1",region="eu-west-1"} 1`,
 
 				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 10`,
 				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 4`,
@@ -135,6 +136,7 @@ func TestCollectOk(t *testing.T) {
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_cluster_total{region="eu-west-1"} 1`,
+				`ecs_service_total{cluster="c1uster1",region="eu-west-1"} 3`,
 
 				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 10`,
 				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 4`,
@@ -161,6 +163,12 @@ func TestCollectOk(t *testing.T) {
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_cluster_total{region="eu-west-1"} 6`,
+				`ecs_service_total{cluster="c1uster0",region="eu-west-1"} 1`,
+				`ecs_service_total{cluster="c1uster1",region="eu-west-1"} 1`,
+				`ecs_service_total{cluster="c1uster2",region="eu-west-1"} 1`,
+				`ecs_service_total{cluster="c1uster3",region="eu-west-1"} 1`,
+				`ecs_service_total{cluster="c1uster4",region="eu-west-1"} 1`,
+				`ecs_service_total{cluster="c1uster5",region="eu-west-1"} 1`,
 
 				`ecs_service_desired_tasks{cluster="c1uster0",region="eu-west-1",service="service0"} 3`,
 				`ecs_service_running_tasks{cluster="c1uster0",region="eu-west-1",service="service0"} 2`,
@@ -210,6 +218,9 @@ func TestCollectOk(t *testing.T) {
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_cluster_total{region="eu-west-1"} 3`,
+				`ecs_service_total{cluster="c1uster1",region="eu-west-1"} 5`,
+				`ecs_service_total{cluster="c1uster2",region="eu-west-1"} 1`,
+				`ecs_service_total{cluster="c1uster3",region="eu-west-1"} 3`,
 
 				`ecs_service_desired_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 10`,
 				`ecs_service_running_tasks{cluster="c1uster1",region="eu-west-1",service="service1"} 4`,

@@ -95,6 +95,14 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 		close(ch)
 	}()
 
+	// Check 1st received metric of services as group
+	m := (<-ch).(prometheus.Metric)
+	m2 := readGauge(m)
+	want := float64(len(testSs))
+	if m2.value != want {
+		t.Errorf("expected %f service_total, got %f", want, m2.value)
+	}
+
 	for _, wantS := range testSs {
 		// Check 1st received metric  per service (desired)
 		m := (<-ch).(prometheus.Metric)

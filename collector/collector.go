@@ -30,6 +30,12 @@ var (
 		[]string{"region"}, nil,
 	)
 
+	serviceCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "service_total"),
+		"The total number of services",
+		[]string{"region", "cluster"}, nil,
+	)
+
 	serviceDesired = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "service_desired_tasks"),
 		"The desired number of instantiations of the task definition to keep running regarding a service",
@@ -142,6 +148,11 @@ func (e *Exporter) collectClusterMetrics(ch chan<- prometheus.Metric, clusters [
 }
 
 func (e *Exporter) collectClusterServicesMetrics(ch chan<- prometheus.Metric, cluster *types.ECSCluster, services []*types.ECSService) {
+
+	// Total services
+	ch <- prometheus.MustNewConstMetric(
+		serviceCount, prometheus.GaugeValue, float64(len(services)), e.region, cluster.Name,
+	)
 
 	for _, s := range services {
 		// Desired task count
