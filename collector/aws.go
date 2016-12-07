@@ -12,6 +12,12 @@ import (
 	"github.com/slok/ecs-exporter/types"
 )
 
+const (
+	maxServicesAPI = 10
+)
+
+type service struct{}
+
 // ECSGatherer is the interface that implements the methods required to gather ECS data
 type ECSGatherer interface {
 	GetClusters() ([]*types.ECSCluster, error)
@@ -66,6 +72,7 @@ func (e *ECSClient) GetClusters() ([]*types.ECSCluster, error) {
 	}
 
 	// Get service descriptions
+	// TODO: this has a 100 cluster limit, split calls in 100 by 100
 	params2 := &ecs.DescribeClustersInput{
 		Clusters: cArns,
 	}
@@ -85,6 +92,12 @@ func (e *ECSClient) GetClusters() ([]*types.ECSCluster, error) {
 	}
 
 	return cs, nil
+}
+
+// srvRes Internal  struct used to return error and result from goroutiens
+type srvRes struct {
+	result []*types.ECSService
+	err    error
 }
 
 // GetClusterServices will return all the services from a cluster
@@ -115,35 +128,71 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 		params.NextToken = resp.NextToken
 	}
 
-	// Get service descriptions
-	ss := []*types.ECSService{}
-
+	res := []*types.ECSService{}
 	// If no services then nothing to fetch
 	if len(sArns) == 0 {
 		log.Debugf("Ignoring services fetching, no services in cluster: %s", cluster.Name)
-		return ss, nil
+		return res, nil
 	}
 
-	params2 := &ecs.DescribeServicesInput{
-		Services: sArns,
-		Cluster:  aws.String(cluster.ID),
-	}
-	resp2, err := e.client.DescribeServices(params2)
-	if err != nil {
-		return nil, err
-	}
+	servC := make(chan srvRes)
 
-	log.Debugf("Getting service descriptions for cluster: %s", cluster.Name)
-	for _, s := range resp2.Services {
-		es := &types.ECSService{
-			ID:       aws.StringValue(s.ServiceArn),
-			Name:     aws.StringValue(s.ServiceName),
-			DesiredT: aws.Int64Value(s.DesiredCount),
-			RunningT: aws.Int64Value(s.RunningCount),
-			PendingT: aws.Int64Value(s.PendingCount),
+	// Only can grab 10 services at a time, create calls in blocks of 10 services
+	totalGr := 0 // counter for goroutines
+	for i := 0; i <= len(sArns)/maxServicesAPI; i++ {
+		st := i * maxServicesAPI
+		// Check if the last call is neccesary (las call only made when the division remaider is present)
+		if st >= len(sArns) {
+			break
 		}
-		ss = append(ss, es)
+		end := st + maxServicesAPI
+		var spss []*string
+		if end > len(sArns) {
+			spss = sArns[st:]
+		} else {
+			spss = sArns[st:end]
+		}
+
+		totalGr++
+		// Make a call on goroutine for each service blocks
+		go func(services []*string) {
+			params := &ecs.DescribeServicesInput{
+				Services: services,
+				Cluster:  aws.String(cluster.ID),
+			}
+			resp, err := e.client.DescribeServices(params)
+			if err != nil {
+				servC <- srvRes{nil, err}
+			}
+
+			ss := []*types.ECSService{}
+
+			log.Debugf("Getting service descriptions for cluster: %s", cluster.Name)
+			for _, s := range resp.Services {
+				es := &types.ECSService{
+					ID:       aws.StringValue(s.ServiceArn),
+					Name:     aws.StringValue(s.ServiceName),
+					DesiredT: aws.Int64Value(s.DesiredCount),
+					RunningT: aws.Int64Value(s.RunningCount),
+					PendingT: aws.Int64Value(s.PendingCount),
+				}
+				ss = append(ss, es)
+			}
+
+			servC <- srvRes{ss, nil}
+
+		}(spss)
+
 	}
 
-	return ss, nil
+	// Get all results
+	for i := 0; i < totalGr; i++ {
+		gRes := <-servC
+		if gRes.err != nil {
+			return res, gRes.err
+		}
+		res = append(res, gRes.result...)
+	}
+
+	return res, nil
 }
