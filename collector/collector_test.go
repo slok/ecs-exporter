@@ -34,7 +34,7 @@ func readGauge(g prometheus.Metric) metricResult {
 
 func TestCollectClusterMetrics(t *testing.T) {
 	region := "eu-west-1"
-	exp, err := New(region)
+	exp, err := New(region, "")
 	if err != nil {
 		t.Errorf("Creation of exporter shoudnt error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestCollectClusterMetrics(t *testing.T) {
 
 func TestCollectClusterServiceMetrics(t *testing.T) {
 	region := "eu-west-1"
-	exp, err := New(region)
+	exp, err := New(region, "")
 	if err != nil {
 		t.Errorf("Creation of exporter shouldnt error: %v", err)
 	}
@@ -127,5 +127,81 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 		if m2.value != want {
 			t.Errorf("expected %f service_running_tasks, got %f", want, m2.value)
 		}
+	}
+}
+
+func TestValidClusters(t *testing.T) {
+	tests := []struct {
+		filter    string
+		correct   []*types.ECSCluster
+		incorrect []*types.ECSCluster
+	}{
+		{
+			filter: ".*",
+			correct: []*types.ECSCluster{
+				&types.ECSCluster{Name: "cluster-good-1"},
+				&types.ECSCluster{Name: "mycluster-good-2"},
+				&types.ECSCluster{Name: "cluster33"},
+				&types.ECSCluster{Name: "clustergood-0"},
+				&types.ECSCluster{Name: "cluster.also-good-5"},
+			},
+			incorrect: []*types.ECSCluster{},
+		},
+		{
+			filter: "cluster[02468]",
+			correct: []*types.ECSCluster{
+				&types.ECSCluster{Name: "cluster0"},
+				&types.ECSCluster{Name: "cluster2"},
+				&types.ECSCluster{Name: "cluster4"},
+				&types.ECSCluster{Name: "cluster6"},
+				&types.ECSCluster{Name: "cluster8"},
+			},
+			incorrect: []*types.ECSCluster{
+				&types.ECSCluster{Name: "cluster1"},
+				&types.ECSCluster{Name: "cluster3"},
+				&types.ECSCluster{Name: "cluster5"},
+				&types.ECSCluster{Name: "cluster7"},
+				&types.ECSCluster{Name: "cluster9"},
+			},
+		},
+		{
+			filter: "prod-cluster-.*",
+			correct: []*types.ECSCluster{
+				&types.ECSCluster{Name: "prod-cluster-big"},
+				&types.ECSCluster{Name: "prod-cluster-small"},
+				&types.ECSCluster{Name: "prod-cluster-main"},
+				&types.ECSCluster{Name: "prod-cluster-infra"},
+				&types.ECSCluster{Name: "prod-cluster-monitoring"},
+			},
+			incorrect: []*types.ECSCluster{
+				&types.ECSCluster{Name: "staging-cluster-big"},
+				&types.ECSCluster{Name: "staging-cluster-small"},
+				&types.ECSCluster{Name: "staging-cluster-main"},
+				&types.ECSCluster{Name: "staging-cluster-infra"},
+				&types.ECSCluster{Name: "staging-cluster-monitoring"},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		e, err := New("eu-west-1", test.filter)
+		if err != nil {
+			t.Errorf("Creation of exporter shoudn't error: %v", err)
+		}
+
+		// Check correct ones
+		for _, c := range test.correct {
+			if !e.validCluster(c) {
+				t.Errorf("Expeceted valid cluster, got incorrect for regexp: %s; cluster: %s", test.filter, c.Name)
+			}
+		}
+
+		// Check incorrect ones
+		for _, c := range test.incorrect {
+			if e.validCluster(c) {
+				t.Errorf("Expeceted invalid cluster, got valid for regexp: '%s' ; cluster: %s", test.filter, c.Name)
+			}
+		}
+
 	}
 }

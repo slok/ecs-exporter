@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"regexp"
 	"sync"
 	"time"
 
@@ -57,22 +58,29 @@ var (
 
 // Exporter collects ECS clusters metrics
 type Exporter struct {
-	sync.Mutex             // Our exporter object will be locakble to protect from concurrent scrapes
-	client     ECSGatherer // Custom ECS client to get information from the clusters
-	region     string      // The region where the exporter will scrape
+	sync.Mutex                   // Our exporter object will be locakble to protect from concurrent scrapes
+	client        ECSGatherer    // Custom ECS client to get information from the clusters
+	region        string         // The region where the exporter will scrape
+	clusterFilter *regexp.Regexp // Compiled regular expresion to filter clusters
 }
 
 // New returns an initialized exporter
-func New(awsRegion string) (*Exporter, error) {
+func New(awsRegion string, clusterFilterRegexp string) (*Exporter, error) {
 	c, err := NewECSClient(awsRegion)
 	if err != nil {
 		return nil, err
 	}
 
+	cRegexp, err := regexp.Compile(clusterFilterRegexp)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Exporter{
-		Mutex:  sync.Mutex{},
-		client: c,
-		region: awsRegion,
+		Mutex:         sync.Mutex{},
+		client:        c,
+		region:        awsRegion,
+		clusterFilter: cRegexp,
 	}, nil
 
 }
@@ -102,13 +110,22 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		log.Errorf("Error collecting metrics: %v", err)
 		return
 	}
+
 	e.collectClusterMetrics(ch, cs)
 
-	// Get services
+	// Start getting metrics per cluster on its own goroutine
 	errC := make(chan bool)
+	totalCs := 0 // total cluster metrics gorotine ran
 
 	for _, c := range cs {
+		// Filter not desired clusters
+		if !e.validCluster(c) {
+			log.Debugf("Cluster '%s' filtered", c.Name)
+			continue
+		}
+		totalCs++
 		go func(c types.ECSCluster) {
+			// Get services
 			ss, err := e.client.GetClusterServices(&c)
 			if err != nil {
 				errC <- true
@@ -122,7 +139,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Grab result or not result error for each goroutine, on first error exit
 	result := float64(1)
-	for i := 0; i < len(cs); i++ {
+	for i := 0; i < totalCs; i++ {
 		select {
 		case err := <-errC:
 			if err {
@@ -138,6 +155,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		up, prometheus.GaugeValue, result, e.region,
 	)
+}
+
+// validCluster will return true if the cluster is valid for the exporter cluster filtering regexp, otherwise false
+func (e *Exporter) validCluster(cluster *types.ECSCluster) bool {
+	return e.clusterFilter.MatchString(cluster.Name)
 }
 
 func (e *Exporter) collectClusterMetrics(ch chan<- prometheus.Metric, clusters []*types.ECSCluster) {

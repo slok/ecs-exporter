@@ -6,4 +6,5 @@
 * [FEATURE] Add `ecs_service_desired_tasks` metrics
 * [FEATURE] Add `ecs_service_pending_tasks` metrics
 * [FEATURE] Add `ecs_service_running_tasks` metrics
+* [FEATURE] Add ability to filter cluster by regular expression
 * [FEATURE] Add Exporter logic

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/slok/ecs-exporter/log"
 )
@@ -12,6 +13,7 @@ const (
 	defaultListenAddress = ":9222"
 	defaultAwsRegion     = ""
 	defaultMetricsPath   = "/metrics"
+	defaultClusterFilter = ".*"
 	defaultDebug         = false
 )
 
@@ -30,6 +32,7 @@ type config struct {
 	listenAddress string
 	awsRegion     string
 	metricsPath   string
+	clusterFilter string
 	debug         bool
 }
 
@@ -51,6 +54,9 @@ func new() *config {
 		&c.awsRegion, "aws.region", defaultAwsRegion, "The AWS region to get metrics from")
 
 	c.fs.StringVar(
+		&c.clusterFilter, "aws.cluster-filter", defaultClusterFilter, "Regex used to filter the cluster names, if doesn't match the cluster is ignored")
+
+	c.fs.StringVar(
 		&c.metricsPath, "web.telemetry-path", defaultMetricsPath, "The path where metrics will be exposed")
 
 	c.fs.BoolVar(
@@ -63,18 +69,25 @@ func new() *config {
 func (c *config) parse(args []string) error {
 	log.Debugf("Parsing flags...")
 
-	err := c.fs.Parse(args)
-	if err != nil {
+	if err := c.fs.Parse(args); err != nil {
 		return err
 	}
 
 	if len(c.fs.Args()) != 0 {
-		err = fmt.Errorf("Invalid command line arguments. Help: %s -h", os.Args[0])
+		return fmt.Errorf("Invalid command line arguments. Help: %s -h", os.Args[0])
 	}
 
 	if c.awsRegion == "" {
-		err = fmt.Errorf("An aws region is required")
+		return fmt.Errorf("An aws region is required")
 	}
 
-	return err
+	if _, err := regexp.Compile(c.clusterFilter); err != nil {
+		return fmt.Errorf("Invalid cluster filtering regex: %s", c.clusterFilter)
+	}
+
+	if c.clusterFilter != defaultClusterFilter {
+		log.Warnf("Filtering cluster metrics by: %s", c.clusterFilter)
+	}
+
+	return nil
 }

@@ -27,6 +27,7 @@ make
 ## Flags
 
 * `aws.region`: The AWS region to get metrics from
+* `aws.cluster-filter`: Regex used to filter the cluster names, if doesn't match the cluster is ignored (default ".*")
 * `debug`: Run exporter in debug mode
 * `web.listen-address`: Address to listen on (default ":9222")
 * `web.telemetry-path`: The path where metrics will be exposed (default "/metrics")
