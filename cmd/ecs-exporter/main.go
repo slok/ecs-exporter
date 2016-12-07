@@ -1,5 +1,7 @@
 package main
 
+//import _ "net/http/pprof"
+
 import (
 	"net/http"
 	"os"
