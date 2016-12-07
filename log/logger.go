@@ -1,6 +1,9 @@
 package log
 
 import (
+	"fmt"
+	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -17,79 +20,92 @@ var logger = customLogger{
 	Mutex:  sync.Mutex{},
 }
 
+// Sourced will add where the logger has been called
+func (l *customLogger) Sourced() *logrus.Entry {
+	_, file, line, ok := runtime.Caller(2)
+	if !ok {
+		file = "<???>"
+		line = 1
+	} else {
+		slash := strings.LastIndex(file, "/")
+		file = file[slash+1:]
+	}
+	return l.WithField("source", fmt.Sprintf("%s:%d", file, line))
+}
+
 // Debug logs a message at level Debug on the standard logger.
 func Debug(args ...interface{}) {
-	logger.Debug(args...)
+	logger.Sourced().Debug(args...)
 }
 
 // Debugln logs a message at level Debug on the standard logger.
 func Debugln(args ...interface{}) {
-	logger.Debugln(args...)
+	logger.Sourced().Debugln(args...)
 }
 
 // Debugf logs a message at level Debug on the standard logger.
 func Debugf(format string, args ...interface{}) {
-	logger.Debugf(format, args...)
+	logger.Sourced().Debugf(format, args...)
 }
 
 // Info logs a message at level Info on the standard logger.
 func Info(args ...interface{}) {
-	logger.Info(args...)
+	logger.Sourced().Info(args...)
 }
 
 // Infoln logs a message at level Info on the standard logger.
 func Infoln(args ...interface{}) {
-	logger.Infoln(args...)
+	logger.Sourced().Infoln(args...)
 }
 
 // Infof logs a message at level Info on the standard logger.
 func Infof(format string, args ...interface{}) {
-	logger.Infof(format, args...)
+	logger.Sourced().Infof(format, args...)
 }
 
 // Warn logs a message at level Warn on the standard logger.
 func Warn(args ...interface{}) {
-	logger.Warn(args...)
+	logger.Sourced().Warn(args...)
 }
 
 // Warnln logs a message at level Warn on the standard logger.
 func Warnln(args ...interface{}) {
-	logger.Warnln(args...)
+	logger.Sourced().Warnln(args...)
 }
 
 // Warnf logs a message at level Warn on the standard logger.
 func Warnf(format string, args ...interface{}) {
-	logger.Warnf(format, args...)
+	logger.Sourced().Warnf(format, args...)
 }
 
 // Error logs a message at level Error on the standard logger.
 func Error(args ...interface{}) {
-	logger.Error(args...)
+	logger.Sourced().Error(args...)
 }
 
 // Errorln logs a message at level Error on the standard logger.
 func Errorln(args ...interface{}) {
-	logger.Errorln(args...)
+	logger.Sourced().Errorln(args...)
 }
 
 // Errorf logs a message at level Error on the standard logger.
 func Errorf(format string, args ...interface{}) {
-	logger.Errorf(format, args...)
+	logger.Sourced().Errorf(format, args...)
 }
 
 // Fatal logs a message at level Fatal on the standard logger.
 func Fatal(args ...interface{}) {
-	logger.Fatal(args...)
+	logger.Sourced().Fatal(args...)
 }
 
 // Fatalln logs a message at level Fatal on the standard logger.
 func Fatalln(args ...interface{}) {
-	logger.Fatalln(args...)
+	logger.Sourced().Fatalln(args...)
 }
 
 // Fatalf logs a message at level Fatal on the standard logger.
 func Fatalf(format string, args ...interface{}) {
-	logger.Fatalf(format, args...)
+	logger.Sourced().Fatalf(format, args...)
 }
 
 // Level are the logging levels
