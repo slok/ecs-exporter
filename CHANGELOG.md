@@ -1,4 +1,4 @@
-## 0.1.0 / YYYY-MM-DD
+## 1.0.0 / 2016-12-11
 
 * [FEATURE] Add `ecs_up` metrics
 * [FEATURE] Add `ecs_cluster_total` metrics
