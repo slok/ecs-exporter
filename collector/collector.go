@@ -142,16 +142,19 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Grab result or not result error for each goroutine, on first error exit
 	result := float64(1)
+
+ServiceCollector:
 	for i := 0; i < totalCs; i++ {
 		select {
 		case err := <-errC:
 			if err {
 				result = 0
-				break
+				break ServiceCollector
 			}
 		case <-time.After(timeout):
 			log.Errorf("Error collecting metrics: Timeout making calls, waited for %v  without response", timeout)
 			result = 0
+			break ServiceCollector
 		}
 
 	}
