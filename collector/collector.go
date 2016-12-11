@@ -26,7 +26,7 @@ var (
 		[]string{"region"}, nil,
 	)
 
-	// Cluster metrics
+	// Clusters metrics
 	clusterCount = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "clusters"),
 		"The total number of clusters",
