@@ -19,20 +19,23 @@ const (
 
 // Metrics descriptions
 var (
+	// exporter metrics
 	up = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "up"),
 		"Was the last query of ecs successful.",
 		[]string{"region"}, nil,
 	)
 
+	// Cluster metrics
 	clusterCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "cluster_total"),
+		prometheus.BuildFQName(namespace, "", "clusters"),
 		"The total number of clusters",
 		[]string{"region"}, nil,
 	)
 
+	//  Services metrics
 	serviceCount = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "service_total"),
+		prometheus.BuildFQName(namespace, "", "services"),
 		"The total number of services",
 		[]string{"region", "cluster"}, nil,
 	)

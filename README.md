@@ -18,8 +18,8 @@ make
 | Metric | Meaning | Labels |
 | ------ | ------- | ------ |
 | ecs_up | Was the last query of ecs successful | region |
-| ecs_cluster_total | The total number of clusters | region |
-| ecs_service_total | The total number of services | region, cluster |
+| ecs_clusters | The total number of clusters | region |
+| ecs_services | The total number of services | region, cluster |
 | ecs_service_desired_tasks | The desired number of instantiations of the task definition to keep running regarding a service | region, cluster, service |
 | ecs_service_pending_tasks | The number of tasks in the cluster that are in the PENDING state regarding a service | region, cluster, service |
 | ecs_service_running_tasks | The number of tasks in the cluster that are in the RUNNING state regarding a service | region, cluster, service |

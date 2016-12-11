@@ -58,14 +58,14 @@ func TestCollectClusterMetrics(t *testing.T) {
 	expectedV := 10.0
 	// Check colected metrics are ok
 	if m2.value != expectedV {
-		t.Errorf("expected %f cluster_total, got %f", expectedV, m2.value)
+		t.Errorf("expected %f ecs_clusters, got %f", expectedV, m2.value)
 	}
 
 	if m2.labels["region"] != region {
 		t.Errorf("expected %s region, got %s", region, m2.labels["region"])
 	}
 
-	expected := `Desc{fqName: "ecs_cluster_total", help: "The total number of clusters", constLabels: {}, variableLabels: [region]}`
+	expected := `Desc{fqName: "ecs_clusters", help: "The total number of clusters", constLabels: {}, variableLabels: [region]}`
 	if expected != m.Desc().String() {
 		t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
 	}
@@ -100,7 +100,11 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 	m2 := readGauge(m)
 	want := float64(len(testSs))
 	if m2.value != want {
-		t.Errorf("expected %f service_total, got %f", want, m2.value)
+		t.Errorf("expected %f ecs_services, got %f", want, m2.value)
+	}
+	expected := `Desc{fqName: "ecs_services", help: "The total number of services", constLabels: {}, variableLabels: [region cluster]}`
+	if expected != m.Desc().String() {
+		t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
 	}
 
 	for _, wantS := range testSs {
@@ -111,6 +115,10 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 		if m2.value != want {
 			t.Errorf("expected %f service_desired_tasks, got %f", want, m2.value)
 		}
+		expected := `Desc{fqName: "ecs_service_desired_tasks", help: "The desired number of instantiations of the task definition to keep running regarding a service", constLabels: {}, variableLabels: [region cluster service]}`
+		if expected != m.Desc().String() {
+			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
+		}
 
 		// Check 1st received metric  per service (pending)
 		m = (<-ch).(prometheus.Metric)
@@ -119,6 +127,10 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 		if m2.value != want {
 			t.Errorf("expected %f service_pending_tasks, got %f", want, m2.value)
 		}
+		expected = `Desc{fqName: "ecs_service_pending_tasks", help: "The number of tasks in the cluster that are in the PENDING state regarding a service", constLabels: {}, variableLabels: [region cluster service]}`
+		if expected != m.Desc().String() {
+			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
+		}
 
 		// Check 1st received metric  per service (running)
 		m = (<-ch).(prometheus.Metric)
@@ -126,6 +138,10 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 		want = float64(wantS.RunningT)
 		if m2.value != want {
 			t.Errorf("expected %f service_running_tasks, got %f", want, m2.value)
+		}
+		expected = `Desc{fqName: "ecs_service_running_tasks", help: "The number of tasks in the cluster that are in the RUNNING state regarding a service", constLabels: {}, variableLabels: [region cluster service]}`
+		if expected != m.Desc().String() {
+			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
 		}
 	}
 }

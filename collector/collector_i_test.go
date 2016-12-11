@@ -120,8 +120,8 @@ func TestCollectOk(t *testing.T) {
 			cFilter: ".*",
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
-				`ecs_cluster_total{region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster1",region="eu-west-1"} 1`,
+				`ecs_clusters{region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster1",region="eu-west-1"} 1`,
 
 				`ecs_service_desired_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 10`,
 				`ecs_service_running_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 4`,
@@ -139,8 +139,8 @@ func TestCollectOk(t *testing.T) {
 			cFilter: ".*",
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
-				`ecs_cluster_total{region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster1",region="eu-west-1"} 3`,
+				`ecs_clusters{region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster1",region="eu-west-1"} 3`,
 
 				`ecs_service_desired_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 10`,
 				`ecs_service_running_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 4`,
@@ -167,13 +167,13 @@ func TestCollectOk(t *testing.T) {
 			cFilter: ".*",
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
-				`ecs_cluster_total{region="eu-west-1"} 6`,
-				`ecs_service_total{cluster="cluster0",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster1",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster2",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster3",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster4",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster5",region="eu-west-1"} 1`,
+				`ecs_clusters{region="eu-west-1"} 6`,
+				`ecs_services{cluster="cluster0",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster1",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster2",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster3",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster4",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster5",region="eu-west-1"} 1`,
 
 				`ecs_service_desired_tasks{cluster="cluster0",region="eu-west-1",service="service0"} 3`,
 				`ecs_service_running_tasks{cluster="cluster0",region="eu-west-1",service="service0"} 2`,
@@ -212,10 +212,10 @@ func TestCollectOk(t *testing.T) {
 			cFilter: "cluster[024]",
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
-				`ecs_cluster_total{region="eu-west-1"} 6`,
-				`ecs_service_total{cluster="cluster0",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster2",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster4",region="eu-west-1"} 1`,
+				`ecs_clusters{region="eu-west-1"} 6`,
+				`ecs_services{cluster="cluster0",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster2",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster4",region="eu-west-1"} 1`,
 
 				`ecs_service_desired_tasks{cluster="cluster0",region="eu-west-1",service="service0"} 3`,
 				`ecs_service_running_tasks{cluster="cluster0",region="eu-west-1",service="service0"} 2`,
@@ -230,9 +230,9 @@ func TestCollectOk(t *testing.T) {
 				`ecs_service_pending_tasks{cluster="cluster4",region="eu-west-1",service="service0"} 90`,
 			},
 			dontWant: []string{
-				`ecs_service_total{cluster="cluster1",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster3",region="eu-west-1"} 1`,
-				`ecs_service_total{cluster="cluster5",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster1",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster3",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster5",region="eu-west-1"} 1`,
 
 				`ecs_service_desired_tasks{cluster="cluster1",region="eu-west-1",service="service0"} 10`,
 				`ecs_service_running_tasks{cluster="cluster1",region="eu-west-1",service="service0"} 5`,
@@ -270,9 +270,9 @@ func TestCollectOk(t *testing.T) {
 			cFilter: "^cluster[^2]$",
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
-				`ecs_cluster_total{region="eu-west-1"} 3`,
-				`ecs_service_total{cluster="cluster1",region="eu-west-1"} 5`,
-				`ecs_service_total{cluster="cluster3",region="eu-west-1"} 3`,
+				`ecs_clusters{region="eu-west-1"} 3`,
+				`ecs_services{cluster="cluster1",region="eu-west-1"} 5`,
+				`ecs_services{cluster="cluster3",region="eu-west-1"} 3`,
 
 				`ecs_service_desired_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 10`,
 				`ecs_service_running_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 4`,
@@ -307,7 +307,7 @@ func TestCollectOk(t *testing.T) {
 				`ecs_service_pending_tasks{cluster="cluster3",region="eu-west-1",service="service3000"} 1000`,
 			},
 			dontWant: []string{
-				`ecs_service_total{cluster="cluster2",region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster2",region="eu-west-1"} 1`,
 
 				`ecs_service_desired_tasks{cluster="cluster2",region="eu-west-1",service="service98"} 100`,
 				`ecs_service_running_tasks{cluster="cluster2",region="eu-west-1",service="service98"} 50`,
