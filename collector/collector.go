@@ -57,6 +57,31 @@ var (
 		"The number of tasks in the cluster that are in the RUNNING state regarding a service",
 		[]string{"region", "cluster", "service"}, nil,
 	)
+
+	//  Container instances metrics
+	cInstanceCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "container_instances"),
+		"The total number of container instances",
+		[]string{"region", "cluster"}, nil,
+	)
+
+	cInstanceAgentC = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "container_instance_agent_connected"),
+		"The connected state of the container instance agent",
+		[]string{"region", "cluster", "instance"}, nil,
+	)
+
+	cInstanceStatusAct = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "container_instance_active"),
+		"The status of the container instance in ACTIVE state, indicates that the container instance can accept tasks.",
+		[]string{"region", "cluster", "instance"}, nil,
+	)
+
+	cInstancePending = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "container_instance_pending_tasks"),
+		"The number of tasks on the container instance that are in the PENDING status.",
+		[]string{"region", "cluster", "instance"}, nil,
+	)
 )
 
 // Exporter collects ECS clusters metrics
@@ -132,10 +157,20 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			ss, err := e.client.GetClusterServices(&c)
 			if err != nil {
 				errC <- true
-				log.Errorf("Error collecting metrics: %v", err)
+				log.Errorf("Error collecting cluster service metrics: %v", err)
 				return
 			}
 			e.collectClusterServicesMetrics(ch, &c, ss)
+
+			// Get container instance metrics
+			cs, err := e.client.GetClusterContainerInstances(&c)
+			if err != nil {
+				errC <- true
+				log.Errorf("Error collecting cluster container instance metrics: %v", err)
+				return
+			}
+			e.collectClusterContainerInstancesMetrics(ch, &c, cs)
+
 			errC <- false
 		}(*c)
 	}
@@ -196,6 +231,38 @@ func (e *Exporter) collectClusterServicesMetrics(ch chan<- prometheus.Metric, cl
 		// Running task count
 		ch <- prometheus.MustNewConstMetric(
 			serviceRunning, prometheus.GaugeValue, float64(s.RunningT), e.region, cluster.Name, s.Name,
+		)
+	}
+}
+
+func (e *Exporter) collectClusterContainerInstancesMetrics(ch chan<- prometheus.Metric, cluster *types.ECSCluster, cInstances []*types.ECSContainerInstance) {
+	// Total container instances
+	ch <- prometheus.MustNewConstMetric(
+		cInstanceCount, prometheus.GaugeValue, float64(len(cInstances)), e.region, cluster.Name,
+	)
+
+	for _, c := range cInstances {
+		// Agent connected
+		var conn float64
+		if c.AgentConn {
+			conn = 1
+		}
+		ch <- prometheus.MustNewConstMetric(
+			cInstanceAgentC, prometheus.GaugeValue, conn, e.region, cluster.Name, c.InstanceID,
+		)
+
+		// Instance status
+		var active float64
+		if c.Active {
+			active = 1
+		}
+		ch <- prometheus.MustNewConstMetric(
+			cInstanceStatusAct, prometheus.GaugeValue, active, e.region, cluster.Name, c.InstanceID,
+		)
+
+		// Pending tasks
+		ch <- prometheus.MustNewConstMetric(
+			cInstancePending, prometheus.GaugeValue, float64(c.PendingT), e.region, cluster.Name, c.InstanceID,
 		)
 	}
 }

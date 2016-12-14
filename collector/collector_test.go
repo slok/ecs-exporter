@@ -146,6 +146,85 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 	}
 }
 
+func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
+	region := "eu-west-1"
+	exp, err := New(region, "")
+	if err != nil {
+		t.Errorf("Creation of exporter shouldnt error: %v", err)
+	}
+
+	ch := make(chan prometheus.Metric)
+
+	testC := &types.ECSCluster{ID: "c1", Name: "cluster1"}
+	testCIs := []*types.ECSContainerInstance{
+		&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 12},
+		&types.ECSContainerInstance{ID: "ci1", InstanceID: "i-00000000000000001", AgentConn: false, Active: true, PendingT: 7},
+		&types.ECSContainerInstance{ID: "ci2", InstanceID: "i-00000000000000002", AgentConn: true, Active: false, PendingT: 24},
+		&types.ECSContainerInstance{ID: "ci3", InstanceID: "i-00000000000000003", AgentConn: false, Active: false, PendingT: 197},
+	}
+	// Collect mocked metrics
+	go func() {
+		exp.collectClusterContainerInstancesMetrics(ch, testC, testCIs)
+		close(ch)
+	}()
+
+	// Check 1st received metric of container instances as group
+	m := (<-ch).(prometheus.Metric)
+	m2 := readGauge(m)
+	want := float64(len(testCIs))
+	if m2.value != want {
+		t.Errorf("expected %f container_instances, got %f", want, m2.value)
+	}
+	expected := `Desc{fqName: "ecs_container_instances", help: "The total number of container instances", constLabels: {}, variableLabels: [region cluster]}`
+	if expected != m.Desc().String() {
+		t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
+	}
+
+	for _, wantCi := range testCIs {
+		// Check 1st received metric per container instance (agent connected)
+		m := (<-ch).(prometheus.Metric)
+		m2 := readGauge(m)
+		var want float64
+		if wantCi.AgentConn {
+			want = 1
+		}
+		if m2.value != want {
+			t.Errorf("expected %f container_instance_agent_connected, got %f", want, m2.value)
+		}
+		expected := `Desc{fqName: "ecs_container_instance_agent_connected", help: "The connected state of the container instance agent", constLabels: {}, variableLabels: [region cluster instance]}`
+		if expected != m.Desc().String() {
+			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
+		}
+
+		// Check 1st received metric per container instance (status active)
+		m = (<-ch).(prometheus.Metric)
+		m2 = readGauge(m)
+		want = 0
+		if wantCi.Active {
+			want = 1
+		}
+		if m2.value != want {
+			t.Errorf("expected %f container_instance_active, got %f", want, m2.value)
+		}
+		expected = `Desc{fqName: "ecs_container_instance_active", help: "The status of the container instance in ACTIVE state, indicates that the container instance can accept tasks.", constLabels: {}, variableLabels: [region cluster instance]}`
+		if expected != m.Desc().String() {
+			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
+		}
+
+		// Check 1st received metric  per service (running)
+		m = (<-ch).(prometheus.Metric)
+		m2 = readGauge(m)
+		want = float64(wantCi.PendingT)
+		if m2.value != want {
+			t.Errorf("expected %f container_instance_pending_tasks, got %f", want, m2.value)
+		}
+		expected = `Desc{fqName: "ecs_container_instance_pending_tasks", help: "The number of tasks on the container instance that are in the PENDING status.", constLabels: {}, variableLabels: [region cluster instance]}`
+		if expected != m.Desc().String() {
+			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
+		}
+	}
+}
+
 func TestValidClusters(t *testing.T) {
 	tests := []struct {
 		filter    string
