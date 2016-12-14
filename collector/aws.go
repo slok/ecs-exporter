@@ -16,12 +16,11 @@ const (
 	maxServicesAPI = 10
 )
 
-type service struct{}
-
 // ECSGatherer is the interface that implements the methods required to gather ECS data
 type ECSGatherer interface {
 	GetClusters() ([]*types.ECSCluster, error)
 	GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSService, error)
+	GetClusterContainerInstances(cluster *types.ECSCluster) ([]*types.ECSContainerInstance, error)
 }
 
 // Generate ECS API mocks running go generate
@@ -156,6 +155,7 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 		totalGr++
 		// Make a call on goroutine for each service blocks
 		go func(services []*string) {
+			log.Debugf("Getting service descriptions for cluster: %s", cluster.Name)
 			params := &ecs.DescribeServicesInput{
 				Services: services,
 				Cluster:  aws.String(cluster.ID),
@@ -167,7 +167,6 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 
 			ss := []*types.ECSService{}
 
-			log.Debugf("Getting service descriptions for cluster: %s", cluster.Name)
 			for _, s := range resp.Services {
 				es := &types.ECSService{
 					ID:       aws.StringValue(s.ServiceArn),
@@ -195,4 +194,67 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 	}
 
 	return res, nil
+}
+
+// GetClusterContainerInstances will return all the container instances from a cluster
+func (e *ECSClient) GetClusterContainerInstances(cluster *types.ECSCluster) ([]*types.ECSContainerInstance, error) {
+
+	// Get list of container instances
+	ciArns := []*string{}
+	params := &ecs.ListContainerInstancesInput{
+		Cluster:    aws.String(cluster.ID),
+		MaxResults: aws.Int64(e.apiMaxResults),
+	}
+
+	log.Debugf("Getting container instance list for cluster: %s", cluster.Name)
+	for {
+		resp, err := e.client.ListContainerInstances(params)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, c := range resp.ContainerInstanceArns {
+			ciArns = append(ciArns, c)
+		}
+
+		if resp.NextToken == nil || aws.StringValue(resp.NextToken) == "" {
+			break
+		}
+		params.NextToken = resp.NextToken
+	}
+
+	ciDescs := []*types.ECSContainerInstance{}
+	// If no container instances then nothing to fetch
+	if len(ciArns) == 0 {
+		log.Debugf("Ignoring container instance fetching, no services in cluster: %s", cluster.Name)
+		return ciDescs, nil
+	}
+
+	// Get description of container instances
+	params2 := &ecs.DescribeContainerInstancesInput{
+		ContainerInstances: ciArns,
+	}
+
+	log.Debugf("Getting container instance descriptions for cluster: %s", cluster.Name)
+	resp, err := e.client.DescribeContainerInstances(params2)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, c := range resp.ContainerInstances {
+		var act bool
+		if aws.StringValue(c.Status) == types.ContainerInstanceStatusActive {
+			act = true
+		}
+		cd := &types.ECSContainerInstance{
+			ID:         aws.StringValue(c.ContainerInstanceArn),
+			InstanceID: aws.StringValue(c.Ec2InstanceId),
+			AgentConn:  aws.BoolValue(c.AgentConnected),
+			Active:     act,
+			PendingT:   aws.Int64Value(c.PendingTasksCount),
+		}
+		ciDescs = append(ciDescs, cd)
+	}
+
+	return ciDescs, nil
 }

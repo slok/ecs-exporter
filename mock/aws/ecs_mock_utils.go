@@ -101,3 +101,57 @@ func MockECSDescribeServices(t *testing.T, mockMatcher *sdk.MockECSAPI, wantErro
 	mockMatcher.EXPECT().DescribeServices(gomock.Any()).Do(func(input interface{}) {
 	}).AnyTimes().Return(result, err)
 }
+
+// MockECSListContainerInstances mocks the listing of container instance arns
+func MockECSListContainerInstances(t *testing.T, mockMatcher *sdk.MockECSAPI, wantError bool, ids ...string) {
+	log.Warnf("Mocking AWS iface: ListContainerInstances")
+	var err error
+	if wantError {
+		err = errors.New("ListContainerInstances wrong!")
+	}
+	ciIds := []*string{}
+	for _, id := range ids {
+		tID := id
+		ciIds = append(ciIds, &tID)
+	}
+	result := &ecs.ListContainerInstancesOutput{
+		ContainerInstanceArns: ciIds,
+	}
+	mockMatcher.EXPECT().ListContainerInstances(gomock.Any()).Do(func(input interface{}) {
+		i := input.(*ecs.ListContainerInstancesInput)
+		if i.Cluster == nil || aws.StringValue(i.Cluster) == "" {
+			t.Errorf("Wrong api call, needs cluster ARN")
+		}
+	}).AnyTimes().Return(result, err)
+}
+
+// MockECSDescribeContainerInstances mocks the description of container instances
+func MockECSDescribeContainerInstances(t *testing.T, mockMatcher *sdk.MockECSAPI, wantError bool, cInstances ...*types.ECSContainerInstance) {
+	log.Warnf("Mocking AWS iface: DescribeContainerInstances")
+	var err error
+	if wantError {
+		err = errors.New("DescribeContainerInstances wrong!")
+	}
+	cis := []*ecs.ContainerInstance{}
+	for _, c := range cInstances {
+
+		status := types.ContainerInstanceStatusInactive
+		if c.Active {
+			status = types.ContainerInstanceStatusActive
+		}
+
+		dc := &ecs.ContainerInstance{
+			ContainerInstanceArn: aws.String(c.ID),
+			Ec2InstanceId:        aws.String(c.InstanceID),
+			AgentConnected:       aws.Bool(c.AgentConn),
+			PendingTasksCount:    aws.Int64(c.PendingT),
+			Status:               aws.String(status),
+		}
+		cis = append(cis, dc)
+	}
+	result := &ecs.DescribeContainerInstancesOutput{
+		ContainerInstances: cis,
+	}
+	mockMatcher.EXPECT().DescribeContainerInstances(gomock.Any()).Do(func(input interface{}) {
+	}).AnyTimes().Return(result, err)
+}

@@ -149,13 +149,91 @@ func TestGetClusterServices(t *testing.T) {
 			}
 
 			if len(services) != len(test.services) {
-				t.Errorf("\n- %v\n-  Length in returned diffs differ, want: %d; got: %d", test, len(test.services), len(services))
+				t.Errorf("\n- %v\n-  Length in returned services differ, want: %d; got: %d", test, len(test.services), len(services))
 			}
 
 			for i, got := range services {
 				want := test.services[i]
 				if !reflect.DeepEqual(want, got) {
 					t.Errorf("\n- %v\n-  Received service from API is wrong, want: %v; got: %v", test, want, got)
+				}
+			}
+
+		} else {
+			if err == nil {
+				t.Errorf("\n- %v\n-  Should return an error, it didn't", test)
+			}
+		}
+
+	}
+}
+
+func TestGetClusterContainerInstances(t *testing.T) {
+	tests := []struct {
+		cis               []*types.ECSContainerInstance
+		wantErrorList     bool
+		wantErrorDescribe bool
+		expectError       bool
+	}{
+		{
+			[]*types.ECSContainerInstance{},
+			false, false, false,
+		},
+		{
+			[]*types.ECSContainerInstance{
+				&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 0},
+				&types.ECSContainerInstance{ID: "ci1", InstanceID: "i-00000000000000001", AgentConn: true, Active: false, PendingT: 5},
+				&types.ECSContainerInstance{ID: "ci2", InstanceID: "i-00000000000000002", AgentConn: false, Active: true, PendingT: 0},
+			},
+			false, false, false,
+		},
+		{
+			[]*types.ECSContainerInstance{
+				&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 0},
+			},
+			true, false, true,
+		},
+		{
+			[]*types.ECSContainerInstance{
+				&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 0},
+			},
+			false, true, true,
+		},
+	}
+
+	for _, test := range tests {
+		ciIDs := []string{}
+
+		for _, ci := range test.cis {
+			ciIDs = append(ciIDs, ci.ID)
+		}
+
+		// Mock
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockECS := sdk.NewMockECSAPI(ctrl)
+		awsMock.MockECSListContainerInstances(t, mockECS, test.wantErrorList, ciIDs...)
+		awsMock.MockECSDescribeContainerInstances(t, mockECS, test.wantErrorDescribe, test.cis...)
+
+		e := &ECSClient{
+			client: mockECS,
+		}
+
+		cis, err := e.GetClusterContainerInstances(&types.ECSCluster{ID: "t1", Name: "test1"})
+
+		if !test.expectError {
+			if err != nil {
+				t.Errorf("\n- %v\n-  Shouldn't return an error, it did: %v", test, err)
+			}
+
+			if len(cis) != len(test.cis) {
+				t.Errorf("\n- %v\n-  Length in returned container instances differ, want: %d; got: %d", test, len(test.cis), len(cis))
+			}
+
+			for i, got := range cis {
+				want := test.cis[i]
+				if !reflect.DeepEqual(want, got) {
+					t.Errorf("\n- %v\n-  Received container instnace from API is wrong, want: %v; got: %v", test, want, got)
 				}
 			}
 
