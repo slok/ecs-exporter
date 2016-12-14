@@ -90,6 +90,7 @@ func (e *ECSClient) GetClusters() ([]*types.ECSCluster, error) {
 		cs = append(cs, ec)
 	}
 
+	log.Debugf("Got %d clusters", len(cs))
 	return cs, nil
 }
 
@@ -193,6 +194,7 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 		res = append(res, gRes.result...)
 	}
 
+	log.Debugf("Got %d services on cluster %s", len(res), cluster.Name)
 	return res, nil
 }
 
@@ -232,6 +234,7 @@ func (e *ECSClient) GetClusterContainerInstances(cluster *types.ECSCluster) ([]*
 
 	// Get description of container instances
 	params2 := &ecs.DescribeContainerInstancesInput{
+		Cluster:            aws.String(cluster.ID),
 		ContainerInstances: ciArns,
 	}
 
@@ -255,6 +258,8 @@ func (e *ECSClient) GetClusterContainerInstances(cluster *types.ECSCluster) ([]*
 		}
 		ciDescs = append(ciDescs, cd)
 	}
+
+	log.Debugf("Got %d container instance on cluster %s", len(ciDescs), cluster.Name)
 
 	return ciDescs, nil
 }
