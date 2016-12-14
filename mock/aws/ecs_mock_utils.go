@@ -99,6 +99,13 @@ func MockECSDescribeServices(t *testing.T, mockMatcher *sdk.MockECSAPI, wantErro
 		Services: ss,
 	}
 	mockMatcher.EXPECT().DescribeServices(gomock.Any()).Do(func(input interface{}) {
+		i := input.(*ecs.DescribeServicesInput)
+		if i.Cluster == nil || aws.StringValue(i.Cluster) == "" {
+			t.Errorf("Wrong api call, needs cluster ARN")
+		}
+		if len(i.Services) == 0 {
+			t.Errorf("Wrong api call, needs at least 1 service ARN")
+		}
 	}).AnyTimes().Return(result, err)
 }
 
@@ -153,5 +160,12 @@ func MockECSDescribeContainerInstances(t *testing.T, mockMatcher *sdk.MockECSAPI
 		ContainerInstances: cis,
 	}
 	mockMatcher.EXPECT().DescribeContainerInstances(gomock.Any()).Do(func(input interface{}) {
+		i := input.(*ecs.DescribeContainerInstancesInput)
+		if i.Cluster == nil || aws.StringValue(i.Cluster) == "" {
+			t.Errorf("Wrong api call, needs cluster ARN")
+		}
+		if len(i.ContainerInstances) == 0 {
+			t.Errorf("Wrong api call, needs at least 1 container instance ARN")
+		}
 	}).AnyTimes().Return(result, err)
 }
