@@ -9,7 +9,7 @@ func TestConfigParse(t *testing.T) {
 		ok  bool
 		cmd []string
 	}{
-		{true, []string{"--aws.region", "eu-west-1", "--web.listen-address", "0.0.0.0:9999", "--web.telemetry-path", "/metrics2"}},
+		{true, []string{"--aws.region", "eu-west-1", "--web.listen-address", "0.0.0.0:9999", "--web.telemetry-path", "/metrics2", "--metrics.disable-cinstances"}},
 		{true, []string{"--aws.region", "eu-west-1", "--web.telemetry-path", "/metrics2"}},
 		{true, []string{"--aws.region", "eu-west-1", "--web.listen-address", "0.0.0.0:9999"}},
 		{true, []string{"--aws.region", "eu-west-1"}},
@@ -17,6 +17,7 @@ func TestConfigParse(t *testing.T) {
 		{true, []string{"--aws.region", "eu-west-1", "--aws.cluster-filter", ".*-prod-.*"}},
 		{false, []string{"--aws.region", "eu-west-1", "--aws.cluster-filter", "["}},
 		{false, []string{"--web.listen-address", "0.0.0.0:9999", "--web.telemetry-path", "/metrics2"}},
+
 		{false, []string{}},
 		{false, []string{"--aws-region", "eu-west-1"}},
 	}

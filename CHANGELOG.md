@@ -1,3 +1,7 @@
+## x.x.x / xxxx-xx-xx
+
+* [FEATURE] Add ability using cmd flags to disable container instance metrics gathering
+
 ## 1.1.0 / 2016-12-15
 
 * [FEATURE] Add `ecs_container_instances` metrics

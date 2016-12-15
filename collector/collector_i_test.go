@@ -94,7 +94,7 @@ func TestCollectError(t *testing.T) {
 			},
 		}
 
-		exp, err := New("eu-west-1", "")
+		exp, err := New("eu-west-1", "", false)
 		if err != nil {
 			t.Errorf("Creation of exporter shouldn't error: %v", err)
 		}
@@ -135,6 +135,7 @@ func TestCollectOk(t *testing.T) {
 		cServices   map[string][]*types.ECSService
 		cCInstances map[string][]*types.ECSContainerInstance
 		cFilter     string
+		disableCIM  bool
 		want        []string
 		dontWant    []string
 	}{
@@ -151,7 +152,8 @@ func TestCollectOk(t *testing.T) {
 					&types.ECSContainerInstance{ID: "ci3", InstanceID: "i-00000000000000003", AgentConn: false, Active: false, PendingT: 50},
 				},
 			},
-			cFilter: ".*",
+			cFilter:    ".*",
+			disableCIM: false,
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_clusters{region="eu-west-1"} 1`,
@@ -161,6 +163,50 @@ func TestCollectOk(t *testing.T) {
 				`ecs_service_desired_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 10`,
 				`ecs_service_running_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 4`,
 				`ecs_service_pending_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 6`,
+
+				`ecs_container_instance_agent_connected{cluster="cluster1",instance="i-00000000000000000",region="eu-west-1"} 1`,
+				`ecs_container_instance_active{cluster="cluster1",instance="i-00000000000000000",region="eu-west-1"} 1`,
+				`ecs_container_instance_pending_tasks{cluster="cluster1",instance="i-00000000000000000",region="eu-west-1"} 12`,
+
+				`ecs_container_instance_agent_connected{cluster="cluster1",instance="i-00000000000000001",region="eu-west-1"} 0`,
+				`ecs_container_instance_active{cluster="cluster1",instance="i-00000000000000001",region="eu-west-1"} 1`,
+				`ecs_container_instance_pending_tasks{cluster="cluster1",instance="i-00000000000000001",region="eu-west-1"} 7`,
+
+				`ecs_container_instance_agent_connected{cluster="cluster1",instance="i-00000000000000002",region="eu-west-1"} 1`,
+				`ecs_container_instance_active{cluster="cluster1",instance="i-00000000000000002",region="eu-west-1"} 0`,
+				`ecs_container_instance_pending_tasks{cluster="cluster1",instance="i-00000000000000002",region="eu-west-1"} 24`,
+
+				`ecs_container_instance_agent_connected{cluster="cluster1",instance="i-00000000000000003",region="eu-west-1"} 0`,
+				`ecs_container_instance_active{cluster="cluster1",instance="i-00000000000000003",region="eu-west-1"} 0`,
+				`ecs_container_instance_pending_tasks{cluster="cluster1",instance="i-00000000000000003",region="eu-west-1"} 50`,
+			},
+		},
+		{
+			cServices: map[string][]*types.ECSService{
+				"cluster1": {
+					&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, RunningT: 4, PendingT: 6}},
+			},
+			cCInstances: map[string][]*types.ECSContainerInstance{
+				"cluster1": {
+					&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 12},
+					&types.ECSContainerInstance{ID: "ci1", InstanceID: "i-00000000000000001", AgentConn: false, Active: true, PendingT: 7},
+					&types.ECSContainerInstance{ID: "ci2", InstanceID: "i-00000000000000002", AgentConn: true, Active: false, PendingT: 24},
+					&types.ECSContainerInstance{ID: "ci3", InstanceID: "i-00000000000000003", AgentConn: false, Active: false, PendingT: 50},
+				},
+			},
+			cFilter:    ".*",
+			disableCIM: true,
+			want: []string{
+				`ecs_up{region="eu-west-1"} 1`,
+				`ecs_clusters{region="eu-west-1"} 1`,
+				`ecs_services{cluster="cluster1",region="eu-west-1"} 1`,
+
+				`ecs_service_desired_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 10`,
+				`ecs_service_running_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 4`,
+				`ecs_service_pending_tasks{cluster="cluster1",region="eu-west-1",service="service1"} 6`,
+			},
+			dontWant: []string{
+				`ecs_container_instances{cluster="cluster1",region="eu-west-1"} 4`,
 
 				`ecs_container_instance_agent_connected{cluster="cluster1",instance="i-00000000000000000",region="eu-west-1"} 1`,
 				`ecs_container_instance_active{cluster="cluster1",instance="i-00000000000000000",region="eu-west-1"} 1`,
@@ -200,7 +246,8 @@ func TestCollectOk(t *testing.T) {
 					&types.ECSContainerInstance{ID: "ci3", InstanceID: "i-00000000000000003", AgentConn: false, Active: false, PendingT: 50},
 				},
 			},
-			cFilter: ".*",
+			cFilter:    ".*",
+			disableCIM: false,
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_clusters{region="eu-west-1"} 2`,
@@ -259,7 +306,8 @@ func TestCollectOk(t *testing.T) {
 				"cluster4": {&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 40}},
 				"cluster5": {&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: false, Active: true, PendingT: 50}},
 			},
-			cFilter: ".*",
+			cFilter:    ".*",
+			disableCIM: false,
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_clusters{region="eu-west-1"} 6`,
@@ -342,7 +390,8 @@ func TestCollectOk(t *testing.T) {
 				"cluster4": {&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 40}},
 				"cluster5": {&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: false, Active: true, PendingT: 50}},
 			},
-			cFilter: "cluster[024]",
+			cFilter:    "cluster[024]",
+			disableCIM: false,
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_clusters{region="eu-west-1"} 6`,
@@ -449,7 +498,8 @@ func TestCollectOk(t *testing.T) {
 					&types.ECSContainerInstance{ID: "ci9876", InstanceID: "i-00000000000009876", AgentConn: true, Active: false, PendingT: 13},
 				},
 			},
-			cFilter: "^cluster[^2]$",
+			cFilter:    "^cluster[^2]$",
+			disableCIM: false,
 			want: []string{
 				`ecs_up{region="eu-west-1"} 1`,
 				`ecs_clusters{region="eu-west-1"} 3`,
@@ -540,7 +590,7 @@ func TestCollectOk(t *testing.T) {
 			cid: test.cCInstances,
 		}
 
-		exp, err := New("eu-west-1", test.cFilter)
+		exp, err := New("eu-west-1", test.cFilter, test.disableCIM)
 		if err != nil {
 			t.Errorf("Creation of exporter shouldn't error: %v", err)
 		}

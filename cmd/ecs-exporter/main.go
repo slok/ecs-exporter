@@ -24,16 +24,17 @@ func Main() int {
 
 	if cfg.debug {
 		log.SetLevel(log.DebugLevel)
-	} else {
+	}
 
+	if cfg.disableCIMetrics {
+		log.Warnf("Cluster container instance metrics have been disabled")
 	}
 
 	// Create the exporter and register it
-	exporter, err := collector.New(cfg.awsRegion, cfg.clusterFilter)
+	exporter, err := collector.New(cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics)
 	if err != nil {
 		log.Error(err)
 		return 1
-
 	}
 	prometheus.MustRegister(exporter)
 

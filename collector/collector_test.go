@@ -34,7 +34,7 @@ func readGauge(g prometheus.Metric) metricResult {
 
 func TestCollectClusterMetrics(t *testing.T) {
 	region := "eu-west-1"
-	exp, err := New(region, "")
+	exp, err := New(region, "", false)
 	if err != nil {
 		t.Errorf("Creation of exporter shoudnt error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestCollectClusterMetrics(t *testing.T) {
 
 func TestCollectClusterServiceMetrics(t *testing.T) {
 	region := "eu-west-1"
-	exp, err := New(region, "")
+	exp, err := New(region, "", false)
 	if err != nil {
 		t.Errorf("Creation of exporter shouldnt error: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 
 func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
 	region := "eu-west-1"
-	exp, err := New(region, "")
+	exp, err := New(region, "", false)
 	if err != nil {
 		t.Errorf("Creation of exporter shouldnt error: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestValidClusters(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		e, err := New("eu-west-1", test.filter)
+		e, err := New("eu-west-1", test.filter, false)
 		if err != nil {
 			t.Errorf("Creation of exporter shoudn't error: %v", err)
 		}

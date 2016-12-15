@@ -90,10 +90,11 @@ type Exporter struct {
 	client        ECSGatherer    // Custom ECS client to get information from the clusters
 	region        string         // The region where the exporter will scrape
 	clusterFilter *regexp.Regexp // Compiled regular expresion to filter clusters
+	noCIMetrics   bool           // Don't gather container instance metrics
 }
 
 // New returns an initialized exporter
-func New(awsRegion string, clusterFilterRegexp string) (*Exporter, error) {
+func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*Exporter, error) {
 	c, err := NewECSClient(awsRegion)
 	if err != nil {
 		return nil, err
@@ -109,6 +110,7 @@ func New(awsRegion string, clusterFilterRegexp string) (*Exporter, error) {
 		client:        c,
 		region:        awsRegion,
 		clusterFilter: cRegexp,
+		noCIMetrics:   disableCIMetrics,
 	}, nil
 
 }
@@ -162,7 +164,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			}
 			e.collectClusterServicesMetrics(ch, &c, ss)
 
-			// Get container instance metrics
+			// Get container instance metrics (if enabled)
+			if e.noCIMetrics {
+				log.Debug("Container instance metrics disabled, no gathering these metrics...")
+				errC <- false
+				return
+			}
+
 			cs, err := e.client.GetClusterContainerInstances(&c)
 			if err != nil {
 				errC <- true

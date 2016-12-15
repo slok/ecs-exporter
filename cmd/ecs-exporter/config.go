@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	defaultListenAddress = ":9222"
-	defaultAwsRegion     = ""
-	defaultMetricsPath   = "/metrics"
-	defaultClusterFilter = ".*"
-	defaultDebug         = false
+	defaultListenAddress    = ":9222"
+	defaultAwsRegion        = ""
+	defaultMetricsPath      = "/metrics"
+	defaultClusterFilter    = ".*"
+	defaultDebug            = false
+	defaultDisableCIMetrics = false
 )
 
 // Cfg is the global configuration
@@ -29,11 +30,12 @@ func parse(args []string) error {
 type config struct {
 	fs *flag.FlagSet
 
-	listenAddress string
-	awsRegion     string
-	metricsPath   string
-	clusterFilter string
-	debug         bool
+	listenAddress    string
+	awsRegion        string
+	metricsPath      string
+	clusterFilter    string
+	debug            bool
+	disableCIMetrics bool
 }
 
 // init will load all the flags
@@ -61,6 +63,9 @@ func new() *config {
 
 	c.fs.BoolVar(
 		&c.debug, "debug", defaultDebug, "Run exporter in debug mode")
+
+	c.fs.BoolVar(
+		&c.disableCIMetrics, "metrics.disable-cinstances", defaultDisableCIMetrics, "Disable clusters container instances metrics gathering")
 
 	return c
 }
