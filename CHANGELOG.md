@@ -1,3 +1,10 @@
+## 1.1.0 / 2016-12-15
+
+* [FEATURE] Add `ecs_container_instances` metrics
+* [FEATURE] Add `ecs_container_instance_agent_connected` metrics
+* [FEATURE] Add `ecs_container_instance_active` metrics
+* [FEATURE] Add `ecs_container_instance_pending_tasks` metrics
+
 ## 1.0.1 / 2016-12-11
 
 * [FIX] Rename `ecs_cluster_total` to `ecs_clusters` metrics

@@ -23,6 +23,11 @@ make
 | ecs_service_desired_tasks | The desired number of instantiations of the task definition to keep running regarding a service | region, cluster, service |
 | ecs_service_pending_tasks | The number of tasks in the cluster that are in the PENDING state regarding a service | region, cluster, service |
 | ecs_service_running_tasks | The number of tasks in the cluster that are in the RUNNING state regarding a service | region, cluster, service |
+| ecs_container_instances | The total number of container instances | region, cluster |
+| ecs_container_instance_agent_connected | The connected state of the container instance agent | region, cluster, instance |
+| ecs_container_instance_active | The status of the container instance in ACTIVE state, indicates that the container instance can accept tasks. | region, cluster, instance |
+| ecs_container_instance_pending_tasks | The number of tasks on the container instance that are in the PENDING status. | region, cluster, instance |
+
 
 ## Flags
 
