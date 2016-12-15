@@ -36,6 +36,7 @@ make
 * `debug`: Run exporter in debug mode
 * `web.listen-address`: Address to listen on (default ":9222")
 * `web.telemetry-path`: The path where metrics will be exposed (default "/metrics")
+* `metrics.disable-cinstances`: Disable clusters container instances metrics gathering
 
 ## Docker
 
