@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/slok/ecs-exporter/types"
@@ -17,11 +18,16 @@ type ECSMockClient struct {
 	cdError  bool                                     // Should error on cluster descriptions
 	sdError  bool                                     // Should error on service descriptions
 	cidError bool                                     // Should error on container instance descriptions
+	sleepFor time.Duration                            // Should sleep before returning?
 	sd       map[string][]*types.ECSService           // Cluster service descriptions
 	cid      map[string][]*types.ECSContainerInstance // container instance descriptions
 }
 
 func (e *ECSMockClient) GetClusters() ([]*types.ECSCluster, error) {
+	if e.sleepFor > 0 {
+		time.Sleep(e.sleepFor)
+	}
+
 	if e.cdError {
 		return nil, fmt.Errorf("GetClusters Error: wanted")
 	}
@@ -36,6 +42,10 @@ func (e *ECSMockClient) GetClusters() ([]*types.ECSCluster, error) {
 }
 
 func (e *ECSMockClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSService, error) {
+	if e.sleepFor > 0 {
+		time.Sleep(e.sleepFor)
+	}
+
 	if e.sdError {
 		return nil, fmt.Errorf("GetClusterServices Error: wanted")
 	}
@@ -50,6 +60,10 @@ func (e *ECSMockClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.
 }
 
 func (e *ECSMockClient) GetClusterContainerInstances(cluster *types.ECSCluster) ([]*types.ECSContainerInstance, error) {
+	if e.sleepFor > 0 {
+		time.Sleep(e.sleepFor)
+	}
+
 	if e.cidError {
 		return nil, fmt.Errorf("GetClusterContainerInstances Error: wanted")
 	}
@@ -624,4 +638,52 @@ func TestCollectOk(t *testing.T) {
 		// Unregister the exporter
 		prometheus.Unregister(exp)
 	}
+}
+
+func TestCollectTimeoutNoPanic(t *testing.T) {
+	// If fails should panic!
+	cServices := map[string][]*types.ECSService{
+		"cluster1": {
+			&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, RunningT: 4, PendingT: 6}},
+	}
+	cCInstances := map[string][]*types.ECSContainerInstance{
+		"cluster1": {
+			&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 12},
+			&types.ECSContainerInstance{ID: "ci1", InstanceID: "i-00000000000000001", AgentConn: false, Active: true, PendingT: 7},
+			&types.ECSContainerInstance{ID: "ci2", InstanceID: "i-00000000000000002", AgentConn: true, Active: false, PendingT: 24},
+			&types.ECSContainerInstance{ID: "ci3", InstanceID: "i-00000000000000003", AgentConn: false, Active: false, PendingT: 50},
+		},
+	}
+
+	e := &ECSMockClient{
+		sd:       cServices,
+		cid:      cCInstances,
+		sleepFor: 10 * time.Millisecond,
+	}
+
+	exp, err := New("eu-west-1", ".*", false)
+	if err != nil {
+		t.Errorf("Creation of exporter shouldn't error: %v", err)
+	}
+	exp.client = e
+	exp.timeout = 0
+
+	// Register the exporter
+	prometheus.MustRegister(exp)
+
+	// Make the request
+	req, _ := http.NewRequest("GET", "/metrics", nil)
+	w := httptest.NewRecorder()
+	prometheus.Handler().ServeHTTP(w, req)
+
+	// Check the result
+	if w.Code != http.StatusOK {
+		t.Errorf("Metrics endpoing status code is wrong, got: %d; want: %d", w.Code, http.StatusOK)
+	}
+
+	// Wait for the panic
+	time.Sleep(100 * time.Millisecond)
+
+	// Unregister the exporter
+	prometheus.Unregister(exp)
 }

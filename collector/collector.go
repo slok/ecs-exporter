@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"regexp"
 	"sync"
 	"time"
@@ -91,6 +92,7 @@ type Exporter struct {
 	region        string         // The region where the exporter will scrape
 	clusterFilter *regexp.Regexp // Compiled regular expresion to filter clusters
 	noCIMetrics   bool           // Don't gather container instance metrics
+	timeout       time.Duration  // The timeout for the whole gathering process
 }
 
 // New returns an initialized exporter
@@ -111,8 +113,26 @@ func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*
 		region:        awsRegion,
 		clusterFilter: cRegexp,
 		noCIMetrics:   disableCIMetrics,
+		timeout:       timeout,
 	}, nil
 
+}
+
+// sendSafeMetric uses context to cancel the send over a closed channel.
+// If a main function finishes (for example due to to timeout), the goroutines running in background will
+// try to send metrics over a closed channel, this will panic, this way the context will check first
+// if the iteraiton has been finished and dont let continue sending the metric
+func sendSafeMetric(ctx context.Context, ch chan<- prometheus.Metric, metric prometheus.Metric) error {
+	// Check if iteration has finished
+	select {
+	case <-ctx.Done():
+		log.Errorf("Tried to send a metric after collection context has finished, metric: %s", metric)
+		return ctx.Err()
+	default: // continue
+	}
+	// If no then send the metric
+	ch <- metric
+	return nil
 }
 
 // Describe describes all the metrics ever exported by the ECS exporter. It
@@ -120,12 +140,28 @@ func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
 	ch <- clusterCount
+	ch <- serviceCount
+	ch <- serviceCount
+	ch <- serviceDesired
+	ch <- servicePending
+	ch <- serviceRunning
+
+	if e.noCIMetrics {
+		return
+	}
+
+	ch <- cInstanceCount
+	ch <- cInstanceAgentC
+	ch <- cInstanceStatusAct
+	ch <- cInstancePending
 }
 
 // Collect fetches the stats from configured ECS and delivers them
 // as Prometheus metrics. It implements prometheus.Collector
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	log.Debugf("Start collecting...")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	e.Lock()
 	defer e.Unlock()
@@ -133,15 +169,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	// Get clusters
 	cs, err := e.client.GetClusters()
 	if err != nil {
-		ch <- prometheus.MustNewConstMetric(
-			up, prometheus.GaugeValue, 0, e.region,
-		)
-
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0, e.region))
 		log.Errorf("Error collecting metrics: %v", err)
 		return
 	}
 
-	e.collectClusterMetrics(ch, cs)
+	e.collectClusterMetrics(ctx, ch, cs)
 
 	// Start getting metrics per cluster on its own goroutine
 	errC := make(chan bool)
@@ -162,7 +195,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				log.Errorf("Error collecting cluster service metrics: %v", err)
 				return
 			}
-			e.collectClusterServicesMetrics(ch, &c, ss)
+			e.collectClusterServicesMetrics(ctx, ch, &c, ss)
 
 			// Get container instance metrics (if enabled)
 			if e.noCIMetrics {
@@ -177,7 +210,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				log.Errorf("Error collecting cluster container instance metrics: %v", err)
 				return
 			}
-			e.collectClusterContainerInstancesMetrics(ch, &c, cs)
+			e.collectClusterContainerInstancesMetrics(ctx, ch, &c, cs)
 
 			errC <- false
 		}(*c)
@@ -194,8 +227,8 @@ ServiceCollector:
 				result = 0
 				break ServiceCollector
 			}
-		case <-time.After(timeout):
-			log.Errorf("Error collecting metrics: Timeout making calls, waited for %v  without response", timeout)
+		case <-time.After(e.timeout):
+			log.Errorf("Error collecting metrics: Timeout making calls, waited for %v  without response", e.timeout)
 			result = 0
 			break ServiceCollector
 		}
@@ -211,43 +244,31 @@ func (e *Exporter) validCluster(cluster *types.ECSCluster) bool {
 	return e.clusterFilter.MatchString(cluster.Name)
 }
 
-func (e *Exporter) collectClusterMetrics(ch chan<- prometheus.Metric, clusters []*types.ECSCluster) {
+func (e *Exporter) collectClusterMetrics(ctx context.Context, ch chan<- prometheus.Metric, clusters []*types.ECSCluster) {
 	// Total cluster count
-	ch <- prometheus.MustNewConstMetric(
-		clusterCount, prometheus.GaugeValue, float64(len(clusters)), e.region,
-	)
+	sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(clusterCount, prometheus.GaugeValue, float64(len(clusters)), e.region))
 }
 
-func (e *Exporter) collectClusterServicesMetrics(ch chan<- prometheus.Metric, cluster *types.ECSCluster, services []*types.ECSService) {
+func (e *Exporter) collectClusterServicesMetrics(ctx context.Context, ch chan<- prometheus.Metric, cluster *types.ECSCluster, services []*types.ECSService) {
 
 	// Total services
-	ch <- prometheus.MustNewConstMetric(
-		serviceCount, prometheus.GaugeValue, float64(len(services)), e.region, cluster.Name,
-	)
+	sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(serviceCount, prometheus.GaugeValue, float64(len(services)), e.region, cluster.Name))
 
 	for _, s := range services {
 		// Desired task count
-		ch <- prometheus.MustNewConstMetric(
-			serviceDesired, prometheus.GaugeValue, float64(s.DesiredT), e.region, cluster.Name, s.Name,
-		)
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(serviceDesired, prometheus.GaugeValue, float64(s.DesiredT), e.region, cluster.Name, s.Name))
 
 		// Pending task count
-		ch <- prometheus.MustNewConstMetric(
-			servicePending, prometheus.GaugeValue, float64(s.PendingT), e.region, cluster.Name, s.Name,
-		)
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(servicePending, prometheus.GaugeValue, float64(s.PendingT), e.region, cluster.Name, s.Name))
 
 		// Running task count
-		ch <- prometheus.MustNewConstMetric(
-			serviceRunning, prometheus.GaugeValue, float64(s.RunningT), e.region, cluster.Name, s.Name,
-		)
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(serviceRunning, prometheus.GaugeValue, float64(s.RunningT), e.region, cluster.Name, s.Name))
 	}
 }
 
-func (e *Exporter) collectClusterContainerInstancesMetrics(ch chan<- prometheus.Metric, cluster *types.ECSCluster, cInstances []*types.ECSContainerInstance) {
+func (e *Exporter) collectClusterContainerInstancesMetrics(ctx context.Context, ch chan<- prometheus.Metric, cluster *types.ECSCluster, cInstances []*types.ECSContainerInstance) {
 	// Total container instances
-	ch <- prometheus.MustNewConstMetric(
-		cInstanceCount, prometheus.GaugeValue, float64(len(cInstances)), e.region, cluster.Name,
-	)
+	sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstanceCount, prometheus.GaugeValue, float64(len(cInstances)), e.region, cluster.Name))
 
 	for _, c := range cInstances {
 		// Agent connected
@@ -255,23 +276,17 @@ func (e *Exporter) collectClusterContainerInstancesMetrics(ch chan<- prometheus.
 		if c.AgentConn {
 			conn = 1
 		}
-		ch <- prometheus.MustNewConstMetric(
-			cInstanceAgentC, prometheus.GaugeValue, conn, e.region, cluster.Name, c.InstanceID,
-		)
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstanceAgentC, prometheus.GaugeValue, conn, e.region, cluster.Name, c.InstanceID))
 
 		// Instance status
 		var active float64
 		if c.Active {
 			active = 1
 		}
-		ch <- prometheus.MustNewConstMetric(
-			cInstanceStatusAct, prometheus.GaugeValue, active, e.region, cluster.Name, c.InstanceID,
-		)
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstanceStatusAct, prometheus.GaugeValue, active, e.region, cluster.Name, c.InstanceID))
 
 		// Pending tasks
-		ch <- prometheus.MustNewConstMetric(
-			cInstancePending, prometheus.GaugeValue, float64(c.PendingT), e.region, cluster.Name, c.InstanceID,
-		)
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstancePending, prometheus.GaugeValue, float64(c.PendingT), e.region, cluster.Name, c.InstanceID))
 	}
 }
 

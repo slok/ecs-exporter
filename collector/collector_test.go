@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -50,7 +51,7 @@ func TestCollectClusterMetrics(t *testing.T) {
 	}
 
 	// Collect mocked metrics
-	go exp.collectClusterMetrics(ch, testCs)
+	go exp.collectClusterMetrics(context.TODO(), ch, testCs)
 
 	m := (<-ch).(prometheus.Metric)
 	m2 := readGauge(m)
@@ -91,7 +92,7 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 	}
 	// Collect mocked metrics
 	go func() {
-		exp.collectClusterServicesMetrics(ch, testC, testSs)
+		exp.collectClusterServicesMetrics(context.TODO(), ch, testC, testSs)
 		close(ch)
 	}()
 
@@ -164,7 +165,7 @@ func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
 	}
 	// Collect mocked metrics
 	go func() {
-		exp.collectClusterContainerInstancesMetrics(ch, testC, testCIs)
+		exp.collectClusterContainerInstancesMetrics(context.TODO(), ch, testC, testCIs)
 		close(ch)
 	}()
 
@@ -299,4 +300,63 @@ func TestValidClusters(t *testing.T) {
 		}
 
 	}
+}
+
+func TestCollectClusterMetricsTimeout(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Test shouldn't panic, it did: %v", r)
+		}
+	}()
+
+	exp, _ := New("eu-west-1", "", false)
+	ch := make(chan prometheus.Metric)
+	close(ch)
+
+	testCs := []*types.ECSCluster{&types.ECSCluster{ID: "c1", Name: "cluster1"}}
+
+	// Cancel the context to mock as a finished main function
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	exp.collectClusterMetrics(ctx, ch, testCs)
+}
+
+func TestCollectClusterServiceMetricsTimeout(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Test shouldn't panic, it did: %v", r)
+		}
+	}()
+
+	exp, _ := New("eu-west-1", "", false)
+	ch := make(chan prometheus.Metric)
+	close(ch)
+
+	testC := &types.ECSCluster{ID: "c1", Name: "cluster1"}
+	testSs := []*types.ECSService{&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, PendingT: 5, RunningT: 5}}
+
+	// Cancel the context to mock as a finished main function
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	exp.collectClusterServicesMetrics(ctx, ch, testC, testSs)
+}
+
+func TestCollectContainerInstanceMetricsTimeout(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Test shouldn't panic, it did: %v", r)
+		}
+	}()
+
+	exp, _ := New("eu-west-1", "", false)
+	ch := make(chan prometheus.Metric)
+	close(ch)
+
+	testC := &types.ECSCluster{ID: "c1", Name: "cluster1"}
+	testCIs := []*types.ECSContainerInstance{&types.ECSContainerInstance{ID: "ci0", InstanceID: "i-00000000000000000", AgentConn: true, Active: true, PendingT: 12}}
+
+	// Cancel the context to mock as a finished main function
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	exp.collectClusterContainerInstancesMetrics(ctx, ch, testC, testCIs)
 }
