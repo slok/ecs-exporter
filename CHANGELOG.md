@@ -1,5 +1,6 @@
-## x.x.x / xxxx-xx-xx
+## 1.1.1 / 2017-01-25
 
+* [FIX] Add context to collector so background running goroutines know when the collect iteration finished
 * [FEATURE] Add ability using cmd flags to disable container instance metrics gathering
 
 ## 1.1.0 / 2016-12-15
