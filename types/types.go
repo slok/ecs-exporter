@@ -20,9 +20,14 @@ type ECSCluster struct {
 
 // ECSContainerInstance represents a cluster container instance
 type ECSContainerInstance struct {
-	ID         string // Container instance ARN
-	InstanceID string // EC2 instance ID
-	AgentConn  bool   // The state of container instnace agent
-	Active     bool   // The state of the container instance
-	PendingT   int64  // The number of tasks in the container instance with pending state
+	ID             string  // Container instance ARN
+	InstanceID     string  // EC2 instance ID
+	AgentConn      bool    // The state of container instnace agent
+	Active         bool    // The state of the container instance
+	PendingT       int64   // The number of tasks in the container instance with pending state
+	CPUutilization float64 // Cpu
+}
+
+type InstanceMetrics struct {
+	CPUutilization float64 // Cpu
 }
