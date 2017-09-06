@@ -17,7 +17,7 @@ const (
 )
 
 // ECSGatherer is the interface that implements the methods required to gather ECS data
-type ECSGatherer interface {
+type ECSGatherer interface { 
 	GetClusters() ([]*types.ECSCluster, error)
 	GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSService, error)
 	GetClusterContainerInstances(cluster *types.ECSCluster) ([]*types.ECSContainerInstance, error)
