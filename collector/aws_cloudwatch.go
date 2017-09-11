@@ -2,6 +2,7 @@ package collector
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,6 +18,10 @@ const (
 	maxServicesCWAPI = 10
 )
 
+var metricsToGet = []string{
+	"CPUUtilization",
+}
+
 // CWGatherer is the interface that implements the methods required to gather cloudwath data
 type CWGatherer interface {
 	GetClusterContainerInstancesMetrics(instance *types.ECSContainerInstance) (*types.InstanceMetrics, error)
@@ -28,11 +33,11 @@ type CWClient struct {
 	apiMaxResults int64
 }
 
-// NewECSClient will return an initialized ECSClient
+// NewCWClient create a Cloudwatch API client
 func NewCWClient(awsRegion string) (*CWClient, error) {
 	// Create AWS session
-	s := session.New(&aws.Config{Region: aws.String(awsRegion)})
-	// s := session.Must(session.NewSession())
+	s := session.Must(session.NewSession(&aws.Config{Region: aws.String(awsRegion)}))
+
 	if s == nil {
 		return nil, fmt.Errorf("error creating aws session")
 	}
@@ -43,41 +48,30 @@ func NewCWClient(awsRegion string) (*CWClient, error) {
 	}, nil
 }
 
+// GetClusterContainerInstancesMetrics return metric for an instance
 func (cw *CWClient) GetClusterContainerInstancesMetrics(instance *types.ECSContainerInstance) (*types.InstanceMetrics, error) {
+	metrics := &types.InstanceMetrics{}
 
-	cpu, err := cw.getInstanceMertic(instance.InstanceID, "CPUUtilization")
+	for _, m := range metricsToGet {
+		result, err := cw.getInstanceMertic(instance.InstanceID, m)
+		if err != nil {
+			return nil, err
+			continue
+		}
+		v := reflect.ValueOf(metrics).Elem().FieldByName(m)
 
-	metrics := &types.InstanceMetrics{
-		CPUutilization: cpu,
+		if v.IsValid() {
+			v.SetFloat(result)
+		}
 	}
 
-	if err != nil {
-		return nil, err
-	}
 	return metrics, nil
 }
 
 func (cw *CWClient) getInstanceMertic(instanceID string, metricName string) (float64, error) {
-	period := -20 * time.Minute
-	now := time.Now()
 	var result float64
 
-	params := &cloudwatch.GetMetricStatisticsInput{
-		StartTime:  aws.Time(now.Add(period)), // Required
-		EndTime:    aws.Time(now),             // Required
-		MetricName: aws.String(metricName),    // Required
-		Namespace:  aws.String("AWS/EC2"),     // Required
-		Period:     aws.Int64(60),             // Required
-		Dimensions: []*cloudwatch.Dimension{
-			{
-				Name:  aws.String("InstanceId"), // Required
-				Value: aws.String(instanceID),   // Required
-			},
-		},
-		Statistics: []*string{
-			aws.String("Maximum"),
-		},
-	}
+	params := generateStatInput(instanceID, metricName)
 
 	log.Debugf("Getting metric  '%s'  for : %s", metricName, instanceID)
 	resp, err := cw.client.GetMetricStatistics(params)
@@ -94,4 +88,26 @@ func (cw *CWClient) getInstanceMertic(instanceID string, metricName string) (flo
 	}
 
 	return result, nil
+}
+
+func generateStatInput(instanceID string, metricName string) *cloudwatch.GetMetricStatisticsInput {
+	period := -20 * time.Minute
+	now := time.Now()
+
+	return &cloudwatch.GetMetricStatisticsInput{
+		StartTime:  aws.Time(now.Add(period)), // Required
+		EndTime:    aws.Time(now),             // Required
+		MetricName: aws.String(metricName),    // Required
+		Namespace:  aws.String("AWS/EC2"),     // Required
+		Period:     aws.Int64(60),             // Required
+		Dimensions: []*cloudwatch.Dimension{
+			{
+				Name:  aws.String("InstanceId"), // Required
+				Value: aws.String(instanceID),   // Required
+			},
+		},
+		Statistics: []*string{
+			aws.String("Maximum"),
+		},
+	}
 }

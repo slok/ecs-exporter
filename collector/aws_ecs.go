@@ -17,7 +17,7 @@ const (
 )
 
 // ECSGatherer is the interface that implements the methods required to gather ECS data
-type ECSGatherer interface { 
+type ECSGatherer interface {
 	GetClusters() ([]*types.ECSCluster, error)
 	GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSService, error)
 	GetClusterContainerInstances(cluster *types.ECSCluster) ([]*types.ECSContainerInstance, error)
@@ -35,8 +35,8 @@ type ECSClient struct {
 // NewECSClient will return an initialized ECSClient
 func NewECSClient(awsRegion string) (*ECSClient, error) {
 	// Create AWS session
-	s := session.New(&aws.Config{Region: aws.String(awsRegion)})
-	// s := session.Must(session.NewSession())
+	s := session.Must(session.NewSession(&aws.Config{Region: aws.String(awsRegion)}))
+
 	if s == nil {
 		return nil, fmt.Errorf("error creating aws session")
 	}

@@ -306,11 +306,10 @@ func (e *Exporter) collectClusterContainerInstancesMetrics(ctx context.Context, 
 
 		m, err := e.CWClient.GetClusterContainerInstancesMetrics(c)
 		if err != nil {
-			log.Debug(err)
+			log.Error(err)
 		}
-
 		// CPUutilisation
-		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstanceCPU, prometheus.GaugeValue, float64(m.CPUutilization), e.region, cluster.Name, c.InstanceID))
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstanceCPU, prometheus.GaugeValue, float64(m.CPUUtilization), e.region, cluster.Name, c.InstanceID))
 	}
 }
 
