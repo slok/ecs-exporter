@@ -28,3 +28,5 @@ _testmain.go
 
 
 bin
+# Golang project vendor packages which should be ignored
+vendor/
