@@ -21,6 +21,6 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
   # Upgrade default docker
   - sudo apt-get -y update
-  - DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o Dpkg::Options::="--force-confnew" --force-yes install docker-engine
+  - DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o Dpkg::Options::="--force-confnew" --force-yes install docker-ce
 script:
   - ./travis-build.sh
