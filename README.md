@@ -27,7 +27,7 @@ make
 | ecs_container_instance_agent_connected | The connected state of the container instance agent | region, cluster, instance |
 | ecs_container_instance_active | The status of the container instance in ACTIVE state, indicates that the container instance can accept tasks. | region, cluster, instance |
 | ecs_container_instance_pending_tasks | The number of tasks on the container instance that are in the PENDING status. | region, cluster, instance |
-
+| ecs_container_instance_cpu_utilization | CPU utilization of instance. | region, cluster, instance |
 
 ## Flags
 
