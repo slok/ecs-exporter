@@ -56,7 +56,6 @@ func (cw *CWClient) GetClusterContainerInstancesMetrics(instance *types.ECSConta
 		result, err := cw.getInstanceMertic(instance.InstanceID, m)
 		if err != nil {
 			return nil, err
-			continue
 		}
 		v := reflect.ValueOf(metrics).Elem().FieldByName(m)
 
