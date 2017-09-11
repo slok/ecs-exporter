@@ -154,6 +154,7 @@ func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
 		t.Errorf("Creation of exporter shouldnt error: %v", err)
 	}
 
+	exp.CWClient = createMockCW(t)
 	ch := make(chan prometheus.Metric)
 
 	testC := &types.ECSCluster{ID: "c1", Name: "cluster1"}
@@ -168,7 +169,6 @@ func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
 		exp.collectClusterContainerInstancesMetrics(context.TODO(), ch, testC, testCIs)
 		close(ch)
 	}()
-
 	// Check 1st received metric of container instances as group
 	m := (<-ch).(prometheus.Metric)
 	m2 := readGauge(m)
@@ -220,6 +220,13 @@ func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
 			t.Errorf("expected %f container_instance_pending_tasks, got %f", want, m2.value)
 		}
 		expected = `Desc{fqName: "ecs_container_instance_pending_tasks", help: "The number of tasks on the container instance that are in the PENDING status.", constLabels: {}, variableLabels: [region cluster instance]}`
+		if expected != m.Desc().String() {
+			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
+		}
+
+		m = (<-ch).(prometheus.Metric)
+		m2 = readGauge(m)
+		expected = `Desc{fqName: "ecs_container_instance_cpu_utilization", help: "CPU utilization of the instance.", constLabels: {}, variableLabels: [region cluster instance]}`
 		if expected != m.Desc().String() {
 			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
 		}
@@ -349,6 +356,7 @@ func TestCollectContainerInstanceMetricsTimeout(t *testing.T) {
 	}()
 
 	exp, _ := New("eu-west-1", "", false)
+	exp.CWClient = createMockCW(t)
 	ch := make(chan prometheus.Metric)
 	close(ch)
 

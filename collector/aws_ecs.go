@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	maxServicesAPI = 10
+	maxServicesECSAPI = 10
 )
 
 // ECSGatherer is the interface that implements the methods required to gather ECS data
@@ -35,7 +35,8 @@ type ECSClient struct {
 // NewECSClient will return an initialized ECSClient
 func NewECSClient(awsRegion string) (*ECSClient, error) {
 	// Create AWS session
-	s := session.New(&aws.Config{Region: aws.String(awsRegion)})
+	s := session.Must(session.NewSession(&aws.Config{Region: aws.String(awsRegion)}))
+
 	if s == nil {
 		return nil, fmt.Errorf("error creating aws session")
 	}
@@ -139,13 +140,13 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 
 	// Only can grab 10 services at a time, create calls in blocks of 10 services
 	totalGr := 0 // counter for goroutines
-	for i := 0; i <= len(sArns)/maxServicesAPI; i++ {
-		st := i * maxServicesAPI
+	for i := 0; i <= len(sArns)/maxServicesECSAPI; i++ {
+		st := i * maxServicesECSAPI
 		// Check if the last call is neccesary (las call only made when the division remaider is present)
 		if st >= len(sArns) {
 			break
 		}
-		end := st + maxServicesAPI
+		end := st + maxServicesECSAPI
 		var spss []*string
 		if end > len(sArns) {
 			spss = sArns[st:]
@@ -249,6 +250,7 @@ func (e *ECSClient) GetClusterContainerInstances(cluster *types.ECSCluster) ([]*
 		if aws.StringValue(c.Status) == types.ContainerInstanceStatusActive {
 			act = true
 		}
+
 		cd := &types.ECSContainerInstance{
 			ID:         aws.StringValue(c.ContainerInstanceArn),
 			InstanceID: aws.StringValue(c.Ec2InstanceId),

@@ -1,8 +1,8 @@
 hash: 309700e761aab5912aebc702999c0ca6134ae1a09ed749d0f4561b60e82a5789
-updated: 2016-11-29T13:27:35.659860241Z
+updated: 2017-09-07T15:20:30.983626058-04:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 92ed7a76d078fc5b792a3b5c834274c8dc89d10a
+  version: 58370dfb7321eb567f09391c955860bad0a747da
   subpackages:
   - aws
   - aws/awserr
@@ -16,10 +16,11 @@ imports:
   - aws/credentials/stscreds
   - aws/defaults
   - aws/ec2metadata
+  - aws/endpoints
   - aws/request
   - aws/session
   - aws/signer/v4
-  - private/endpoints
+  - internal/shareddefaults
   - private/protocol
   - private/protocol/json/jsonutil
   - private/protocol/jsonrpc
@@ -27,7 +28,8 @@ imports:
   - private/protocol/query/queryutil
   - private/protocol/rest
   - private/protocol/xml/xmlutil
-  - private/waiter
+  - service/cloudwatch
+  - service/cloudwatch/cloudwatchiface
   - service/ecs
   - service/ecs/ecsiface
   - service/sts
@@ -36,13 +38,13 @@ imports:
   subpackages:
   - quantile
 - name: github.com/go-ini/ini
-  version: 2ba15ac2dc9cdf88c110ec2dc0ced7fa45f5678c
+  version: c787282c39ac1fc618827141a1f762240def08a3
 - name: github.com/golang/mock
-  version: bd3c8e81be01eef76d4b503f5e687d2d1354d2d9
+  version: 18f6dd13ccdd227b8ebc546ca95cd62a02f3970c
   subpackages:
   - gomock
 - name: github.com/golang/protobuf
-  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
+  version: 17ce1425424ab154092bbb43af630bd647f3bb0d
   subpackages:
   - proto
 - name: github.com/jmespath/go-jmespath
@@ -52,30 +54,33 @@ imports:
   subpackages:
   - pbutil
 - name: github.com/prometheus/client_golang
-  version: 575f371f7862609249a1be4c9145f429fe065e32
+  version: 671c87b04728565380d95c621edc687bfa00664c
   subpackages:
   - prometheus
 - name: github.com/prometheus/client_model
-  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  version: 6f3806018612930941127f2a7c6c453ba2c527d2
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 0d5de9d6d8629cb8bee6d4674da4127cd8b615a3
+  version: bc8b88226a1210b016e9993b1d75f858c9c8f778
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
-  - log
   - model
   - version
 - name: github.com/prometheus/procfs
-  version: abf152e5f3e97f2fafac028d2cc06c1feb87ffa5
+  version: e645f4e5aaa8506fc71d6edbc5c4ff02c04c46f2
+  subpackages:
+  - xfs
 - name: github.com/Sirupsen/logrus
-  version: e400ff7861bce9661cf37c162ce3b7b303baf333
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
+- name: golang.org/x/crypto
+  version: 81e90905daefcd6fd217b62423c0908922eadb30
+  subpackages:
+  - ssh/terminal
 - name: golang.org/x/sys
-  version: 30237cf4eefd639b184d1f2cb77a581ea0be8947
+  version: 9aade4d3a3b7e6d876cd3823ad20ec45fc035402
   subpackages:
   - unix
   - windows
-  - windows/registry
-  - windows/svc/eventlog
 testImports: []

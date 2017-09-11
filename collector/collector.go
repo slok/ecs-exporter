@@ -83,12 +83,19 @@ var (
 		"The number of tasks on the container instance that are in the PENDING status.",
 		[]string{"region", "cluster", "instance"}, nil,
 	)
+
+	cInstanceCPU = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "container_instance_cpu_utilization"),
+		"CPU utilization of the instance.",
+		[]string{"region", "cluster", "instance"}, nil,
+	)
 )
 
 // Exporter collects ECS clusters metrics
 type Exporter struct {
 	sync.Mutex                   // Our exporter object will be locakble to protect from concurrent scrapes
-	client        ECSGatherer    // Custom ECS client to get information from the clusters
+	ECSClient     ECSGatherer    // Custom ECS client to get information from the clusters
+	CWClient      CWGatherer     // Custom CW client to get information from the cloudwatch
 	region        string         // The region where the exporter will scrape
 	clusterFilter *regexp.Regexp // Compiled regular expresion to filter clusters
 	noCIMetrics   bool           // Don't gather container instance metrics
@@ -97,7 +104,13 @@ type Exporter struct {
 
 // New returns an initialized exporter
 func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*Exporter, error) {
+
 	c, err := NewECSClient(awsRegion)
+	if err != nil {
+		return nil, err
+	}
+
+	cw, err := NewCWClient(awsRegion)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +122,8 @@ func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*
 
 	return &Exporter{
 		Mutex:         sync.Mutex{},
-		client:        c,
+		ECSClient:     c,
+		CWClient:      cw,
 		region:        awsRegion,
 		clusterFilter: cRegexp,
 		noCIMetrics:   disableCIMetrics,
@@ -154,6 +168,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- cInstanceAgentC
 	ch <- cInstanceStatusAct
 	ch <- cInstancePending
+	ch <- cInstanceCPU
 }
 
 // Collect fetches the stats from configured ECS and delivers them
@@ -167,7 +182,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	defer e.Unlock()
 
 	// Get clusters
-	cs, err := e.client.GetClusters()
+	cs, err := e.ECSClient.GetClusters()
 	if err != nil {
 		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0, e.region))
 		log.Errorf("Error collecting metrics: %v", err)
@@ -189,7 +204,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		totalCs++
 		go func(c types.ECSCluster) {
 			// Get services
-			ss, err := e.client.GetClusterServices(&c)
+			ss, err := e.ECSClient.GetClusterServices(&c)
 			if err != nil {
 				errC <- true
 				log.Errorf("Error collecting cluster service metrics: %v", err)
@@ -204,7 +219,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 
-			cs, err := e.client.GetClusterContainerInstances(&c)
+			cs, err := e.ECSClient.GetClusterContainerInstances(&c)
 			if err != nil {
 				errC <- true
 				log.Errorf("Error collecting cluster container instance metrics: %v", err)
@@ -276,6 +291,7 @@ func (e *Exporter) collectClusterContainerInstancesMetrics(ctx context.Context, 
 		if c.AgentConn {
 			conn = 1
 		}
+
 		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstanceAgentC, prometheus.GaugeValue, conn, e.region, cluster.Name, c.InstanceID))
 
 		// Instance status
@@ -287,6 +303,13 @@ func (e *Exporter) collectClusterContainerInstancesMetrics(ctx context.Context, 
 
 		// Pending tasks
 		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstancePending, prometheus.GaugeValue, float64(c.PendingT), e.region, cluster.Name, c.InstanceID))
+
+		m, err := e.CWClient.GetClusterContainerInstancesMetrics(c)
+		if err != nil {
+			log.Error(err)
+		}
+		// CPUutilisation
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(cInstanceCPU, prometheus.GaugeValue, float64(m.CPUUtilization), e.region, cluster.Name, c.InstanceID))
 	}
 }
 

@@ -112,7 +112,7 @@ func TestCollectError(t *testing.T) {
 		if err != nil {
 			t.Errorf("Creation of exporter shouldn't error: %v", err)
 		}
-		exp.client = e
+		exp.ECSClient = e
 
 		// Register the exporter
 		prometheus.MustRegister(exp)
@@ -608,8 +608,8 @@ func TestCollectOk(t *testing.T) {
 		if err != nil {
 			t.Errorf("Creation of exporter shouldn't error: %v", err)
 		}
-		exp.client = e
-
+		exp.ECSClient = e
+		exp.CWClient = createMockCW(t)
 		// Register the exporter
 		prometheus.MustRegister(exp)
 
@@ -665,7 +665,7 @@ func TestCollectTimeoutNoPanic(t *testing.T) {
 	if err != nil {
 		t.Errorf("Creation of exporter shouldn't error: %v", err)
 	}
-	exp.client = e
+	exp.ECSClient = e
 	exp.timeout = 0
 
 	// Register the exporter

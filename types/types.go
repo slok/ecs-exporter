@@ -26,3 +26,7 @@ type ECSContainerInstance struct {
 	Active     bool   // The state of the container instance
 	PendingT   int64  // The number of tasks in the container instance with pending state
 }
+
+type InstanceMetrics struct {
+	CPUUtilization float64 // Cpu
+}
