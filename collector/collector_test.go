@@ -154,6 +154,7 @@ func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
 		t.Errorf("Creation of exporter shouldnt error: %v", err)
 	}
 
+	exp.CWClient = createMockCW(t)
 	ch := make(chan prometheus.Metric)
 
 	testC := &types.ECSCluster{ID: "c1", Name: "cluster1"}
@@ -166,9 +167,7 @@ func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
 	// Collect mocked metrics
 	go func() {
 		exp.collectClusterContainerInstancesMetrics(context.TODO(), ch, testC, testCIs)
-
 		close(ch)
-
 	}()
 	// Check 1st received metric of container instances as group
 	m := (<-ch).(prometheus.Metric)
@@ -357,6 +356,7 @@ func TestCollectContainerInstanceMetricsTimeout(t *testing.T) {
 	}()
 
 	exp, _ := New("eu-west-1", "", false)
+	exp.CWClient = createMockCW(t)
 	ch := make(chan prometheus.Metric)
 	close(ch)
 

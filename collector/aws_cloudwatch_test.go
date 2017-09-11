@@ -16,6 +16,25 @@ const (
 	metricName = "CPUUtilization"
 )
 
+func createMockCW(t *testing.T) *CWClient {
+	// Mock
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	cwAPI := sdk.NewMockCloudWatchAPI(mockCtrl)
+
+	// build CW answare
+	result := &cloudwatch.GetMetricStatisticsOutput{}
+	result.Label = aws.String("FakeMetric")
+	result.Datapoints = []*cloudwatch.Datapoint{&cloudwatch.Datapoint{
+		Maximum: aws.Float64(95),
+	},
+	}
+
+	// Mock the answare
+	cwAPI.EXPECT().GetMetricStatistics(gomock.Any()).Return(result, nil).AnyTimes()
+	return &CWClient{client: cwAPI}
+}
+
 func TestCWClient_getInstanceMertic(t *testing.T) {
 	tests := []struct {
 		name        string
