@@ -11,6 +11,28 @@ make
 
 * This exporter will listen by default on the port `9222`
 * Requires AWS credentials or permission from an EC2 instance
+* You can use the following IAM policy to grant required permissions:
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Action": [
+                "ecs:ListServices",
+                "ecs:ListContainerInstances",
+                "ecs:ListClusters",
+                "ecs:DescribeServices",
+                "ecs:DescribeContainerInstances",
+                "ecs:DescribeClusters"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
 
 
 ## Exported Metrics
