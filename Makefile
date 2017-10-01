@@ -68,24 +68,21 @@ stop:
 build_release:build
 		cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c "./build.sh"
 
-# Update project dependencies to tle latest version
-dep_update:build
-	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'glide up --strip-vcs --update-vendored'
-# Install new dependency make dep_install args="github.com/Sirupsen/logrus"
-dep_install:build
-		cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'glide get --strip-vcs $(args)'
+# ensure dependencies.
+dep_ensure:build
+	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'dep ensure -v'
 
 # Pass the golang vet check
 vet: build
-	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'go vet `glide nv`'
+	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'go vet `go list ./... | grep -v vendor`'
 
 # Execute unit tests
 test:build
-	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'go test `glide nv` --tags="integration" -v'
+	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'go test `go list ./... | grep -v vendor` --tags="integration" -v'
 
 # Generate required code (mocks...)
 gogen: build
-	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'go generate `glide nv`'
+	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'go generate `go list ./... | grep -v vendor`'
 
 # Build the production image
 image: base
