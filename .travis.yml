@@ -5,7 +5,7 @@ services:
   - docker
 env:
   global:
-    - DOCKER_COMPOSE_VERSION: 1.6.2
+    - DOCKER_COMPOSE_VERSION: 1.16.1
     # DOCKER_HUB_EMAIL
     - secure: "XxqrJbrCbluza/CmGA2YliOhdzgwy60DAnK7+BBL9N80YHYhE6GOBu1SUFRieaNo7dShMUlnc2077cNQDHpH7Bb08TT18zUDfgGJ8XKEw87BW0h92M6mW71rZ0xPWXoDocgXUOCoQTOEvErrfMxHWXVgkl3UyI20xdAdqwUNyZbnYpAWYN5UC9w6g/k7L2yAKCPwtEcyoB/TtPyyXdMtfMUtxwCkja2X/2Vy9ZJHD9rkCk9Bw/SLSOyb2vYahC/oj5S470wKapmJcX3EnIpa7pEClXXDL9X0Ma0ZmpWr+zrrl40stqSYybhm7QP2OMsjQwPJHA1Url24w+sKgEyqTBznCsJTsUlefz7xilkL2UsxcTrwM2K4s16T7xHr7rS3n/K2DKyrM6DJet3Ecc3mdNgZA5QAwpI994ThaeuisOabCfQxuxw4j2dT1fjrDdT5bmhojahasX5kfx4QvDFkMIY8nCiB23SLVkPUH4+S6fmBkjXKPQzQNxY+qSiRp4QW9/SlMD1TloF4UPowBiPu5hAsd+Zzft94bojoHzs4b7RUyp83Huhd4MWmbUVjPH4mmE2MjeX3ItDxhChE0OuBHOlVigAPlSLf7mSV53mnpJ8BIqQjGe1O+xZtA+nmOqWiMbz+TVLZKs+DzHXN4bOqUgzZ0NYuxSR+55VgLvdG3tQ="
     # DOCKER_HUB_USERNAME
@@ -19,8 +19,11 @@ before_install:
   - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
-  # Upgrade default docker
-  - sudo apt-get -y update
-  - DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o Dpkg::Options::="--force-confnew" --force-yes install docker-engine
+  # Upgrade docker
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - sudo apt-get update
+  - sudo apt-get -y install docker-ce
+
 script:
   - ./travis-build.sh
