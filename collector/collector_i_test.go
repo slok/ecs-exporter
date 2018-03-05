@@ -17,10 +17,12 @@ import (
 type ECSMockClient struct {
 	cdError  bool                                     // Should error on cluster descriptions
 	sdError  bool                                     // Should error on service descriptions
+	stError  bool                                     // Should error on scalable targets
 	cidError bool                                     // Should error on container instance descriptions
 	sleepFor time.Duration                            // Should sleep before returning?
 	sd       map[string][]*types.ECSService           // Cluster service descriptions
 	cid      map[string][]*types.ECSContainerInstance // container instance descriptions
+	st       map[string][]*types.ECSScalableTarget    // scalable target descriptions
 }
 
 func (e *ECSMockClient) GetClusters() ([]*types.ECSCluster, error) {
@@ -78,16 +80,31 @@ func (e *ECSMockClient) GetClusterContainerInstances(cluster *types.ECSCluster) 
 	return cis, nil
 }
 
+func (e *ECSMockClient) GetClusterScalableTargets(cluster *types.ECSCluster) ([]*types.ECSScalableTarget, error) {
+	if e.sleepFor > 0 {
+		time.Sleep(e.sleepFor)
+	}
+
+	if e.stError {
+		return nil, fmt.Errorf("GetClusterScalableTargets Error: wanted")
+	}
+
+	st := []*types.ECSScalableTarget{}
+	return st, nil
+}
+
 func TestCollectError(t *testing.T) {
 
 	tests := []struct {
 		errorDescribeClusters           bool
 		errorDescribeServices           bool
 		errorDescribeContainerInstances bool
+		errorDescribeScalableTargets    bool
 	}{
-		{true, false, false},
-		{false, true, false},
-		{false, false, true},
+		{true, false, false, false},
+		{false, true, false, false},
+		{false, false, true, false},
+		{false, false, false, true},
 	}
 
 	for _, test := range tests {
@@ -96,6 +113,7 @@ func TestCollectError(t *testing.T) {
 			cdError:  test.errorDescribeClusters,
 			sdError:  test.errorDescribeServices,
 			cidError: test.errorDescribeContainerInstances,
+			stError:  test.errorDescribeScalableTargets,
 			sd: map[string][]*types.ECSService{ // At least 1 to check the service description call
 				"cluster0": []*types.ECSService{
 					&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, RunningT: 4, PendingT: 6},

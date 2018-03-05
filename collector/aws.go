@@ -5,11 +5,14 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/applicationautoscaling"
+	"github.com/aws/aws-sdk-go/service/applicationautoscaling/applicationautoscalingiface"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
 
 	"github.com/slok/ecs-exporter/log"
 	"github.com/slok/ecs-exporter/types"
+	"strings"
 )
 
 const (
@@ -21,15 +24,17 @@ type ECSGatherer interface {
 	GetClusters() ([]*types.ECSCluster, error)
 	GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSService, error)
 	GetClusterContainerInstances(cluster *types.ECSCluster) ([]*types.ECSContainerInstance, error)
+	GetClusterScalableTargets(cluster *types.ECSCluster) ([]*types.ECSScalableTarget, error)
 }
 
 // Generate ECS API mocks running go generate
 //go:generate mockgen -source ../vendor/github.com/aws/aws-sdk-go/service/ecs/ecsiface/interface.go -package sdk -destination ../mock/aws/sdk/ecsiface_mock.go
 
-// ECSClient is a wrapper for AWS ecs client that implements helpers to get ECS clusters metrics
+// ECSClient is a wrapper for AWS ecs and application autoscaling clients that implements helpers to get ECS clusters metrics
 type ECSClient struct {
-	client        ecsiface.ECSAPI
-	apiMaxResults int64
+	client           ecsiface.ECSAPI
+	scaleClient      applicationautoscalingiface.ApplicationAutoScalingAPI
+	ecsApiMaxResults int64
 }
 
 // NewECSClient will return an initialized ECSClient
@@ -41,8 +46,9 @@ func NewECSClient(awsRegion string) (*ECSClient, error) {
 	}
 
 	return &ECSClient{
-		client:        ecs.New(s),
-		apiMaxResults: 100,
+		client:           ecs.New(s),
+		scaleClient:      applicationautoscaling.New(s),
+		ecsApiMaxResults: 100,
 	}, nil
 }
 
@@ -50,7 +56,7 @@ func NewECSClient(awsRegion string) (*ECSClient, error) {
 func (e *ECSClient) GetClusters() ([]*types.ECSCluster, error) {
 	cArns := []*string{}
 	params := &ecs.ListClustersInput{
-		MaxResults: aws.Int64(e.apiMaxResults),
+		MaxResults: aws.Int64(e.ecsApiMaxResults),
 	}
 
 	// Get cluster IDs
@@ -108,7 +114,7 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 	// Get service ids
 	params := &ecs.ListServicesInput{
 		Cluster:    aws.String(cluster.ID),
-		MaxResults: aws.Int64(e.apiMaxResults),
+		MaxResults: aws.Int64(e.ecsApiMaxResults),
 	}
 
 	log.Debugf("Getting service list for cluster: %s", cluster.Name)
@@ -198,6 +204,43 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 	return res, nil
 }
 
+// GetClusterScalableTargets will return all the scalable targets for the cluster
+func (e *ECSClient) GetClusterScalableTargets(cluster *types.ECSCluster) ([]*types.ECSScalableTarget, error) {
+	scalableTargets := []*types.ECSScalableTarget{}
+	params := &applicationautoscaling.DescribeScalableTargetsInput{
+		ServiceNamespace: aws.String("ecs"),
+	}
+
+	log.Debugf("Getting ClusterScalableTargets for cluster: %s", cluster.Name)
+	for {
+		resp, err := e.scaleClient.DescribeScalableTargets(params)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, t := range resp.ScalableTargets {
+			rID := strings.Split(aws.StringValue(t.ResourceId), "/")
+			if len(rID) != 3 {
+				return nil, fmt.Errorf("Invalid scalable target resource id (%v)", aws.StringValue(t.ResourceId))
+			}
+			if rID[1] == cluster.Name {
+				scalableTargets = append(scalableTargets, &types.ECSScalableTarget{ClusterName: cluster.Name,
+					ServiceName: rID[2],
+					MinCapacity: aws.Int64Value(t.MinCapacity),
+					MaxCapacity: aws.Int64Value(t.MaxCapacity),
+				})
+			}
+		}
+
+		if resp.NextToken == nil || aws.StringValue(resp.NextToken) == "" {
+			break
+		}
+		params.NextToken = resp.NextToken
+	}
+
+	return scalableTargets, nil
+}
+
 // GetClusterContainerInstances will return all the container instances from a cluster
 func (e *ECSClient) GetClusterContainerInstances(cluster *types.ECSCluster) ([]*types.ECSContainerInstance, error) {
 
@@ -205,7 +248,7 @@ func (e *ECSClient) GetClusterContainerInstances(cluster *types.ECSCluster) ([]*
 	ciArns := []*string{}
 	params := &ecs.ListContainerInstancesInput{
 		Cluster:    aws.String(cluster.ID),
-		MaxResults: aws.Int64(e.apiMaxResults),
+		MaxResults: aws.Int64(e.ecsApiMaxResults),
 	}
 
 	log.Debugf("Getting container instance list for cluster: %s", cluster.Name)

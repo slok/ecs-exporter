@@ -21,6 +21,7 @@ make
             "Sid": "",
             "Effect": "Allow",
             "Action": [
+                "application-autoscaling:DescribeScalableTargets",
                 "ecs:ListServices",
                 "ecs:ListContainerInstances",
                 "ecs:ListClusters",

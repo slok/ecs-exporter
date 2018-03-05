@@ -59,6 +59,19 @@ var (
 		[]string{"region", "cluster", "service"}, nil,
 	)
 
+	// Cluster scalable target metrics
+	scalableTargetMin = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "autoscale_service_min_tasks"),
+		"The minimum number of tasks for the application autoscaling scalable target",
+		[]string{"region", "cluster", "service"}, nil,
+	)
+
+	scalableTargetMax = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "autoscale_service_max_tasks"),
+		"The maximum number of tasks for the application autoscaling scalable target",
+		[]string{"region", "cluster", "service"}, nil,
+	)
+
 	//  Container instances metrics
 	cInstanceCount = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "container_instances"),
@@ -140,6 +153,8 @@ func sendSafeMetric(ctx context.Context, ch chan<- prometheus.Metric, metric pro
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
 	ch <- clusterCount
+	ch <- scalableTargetMin
+	ch <- scalableTargetMax
 	ch <- serviceCount
 	ch <- serviceCount
 	ch <- serviceDesired
@@ -197,6 +212,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			}
 			e.collectClusterServicesMetrics(ctx, ch, &c, ss)
 
+			st, err := e.client.GetClusterScalableTargets(&c)
+			if err != nil {
+				errC <- true
+				log.Errorf("Error collecting cluster scalable targets metrics: %v", err)
+				return
+			}
+			e.collectClusterScalableTargetsMetrics(ctx, ch, &c, st)
+
 			// Get container instance metrics (if enabled)
 			if e.noCIMetrics {
 				log.Debug("Container instance metrics disabled, no gathering these metrics...")
@@ -247,6 +270,13 @@ func (e *Exporter) validCluster(cluster *types.ECSCluster) bool {
 func (e *Exporter) collectClusterMetrics(ctx context.Context, ch chan<- prometheus.Metric, clusters []*types.ECSCluster) {
 	// Total cluster count
 	sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(clusterCount, prometheus.GaugeValue, float64(len(clusters)), e.region))
+}
+
+func (e *Exporter) collectClusterScalableTargetsMetrics(ctx context.Context, ch chan<- prometheus.Metric, cluster *types.ECSCluster, targets []*types.ECSScalableTarget) {
+	for _, t := range targets {
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(scalableTargetMin, prometheus.GaugeValue, float64(t.MinCapacity), e.region, cluster.Name, t.ServiceName))
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(scalableTargetMax, prometheus.GaugeValue, float64(t.MaxCapacity), e.region, cluster.Name, t.ServiceName))
+	}
 }
 
 func (e *Exporter) collectClusterServicesMetrics(ctx context.Context, ch chan<- prometheus.Metric, cluster *types.ECSCluster, services []*types.ECSService) {

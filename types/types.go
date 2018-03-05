@@ -12,10 +12,18 @@ type ECSService struct {
 	DesiredT, PendingT, RunningT int64  // Service task information
 }
 
+// ECSScalableTarget represents an ecs task with autoscaling enabled
+type ECSScalableTarget struct {
+	ClusterName string // Name of the Cluster
+	ServiceName string // Name of the Service
+	MinCapacity int64  // The max capacity of the autoscaling target
+	MaxCapacity int64  // The min capacity of the autoscaling target
+}
+
 // ECSCluster reprensens a cluster on ECS
 type ECSCluster struct {
 	ID   string // Cluster ARN
-	Name string // Name of the service
+	Name string // Name of the Cluster
 }
 
 // ECSContainerInstance represents a cluster container instance
