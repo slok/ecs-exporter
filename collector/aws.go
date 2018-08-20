@@ -28,12 +28,13 @@ type ECSGatherer interface {
 
 // ECSClient is a wrapper for AWS ecs client that implements helpers to get ECS clusters metrics
 type ECSClient struct {
-	client        ecsiface.ECSAPI
-	apiMaxResults int64
+	client         ecsiface.ECSAPI
+	apiMaxResults  int64
+	maxConcurrency int
 }
 
 // NewECSClient will return an initialized ECSClient
-func NewECSClient(awsRegion string) (*ECSClient, error) {
+func NewECSClient(awsRegion string, maxConcurrency int) (*ECSClient, error) {
 	// Create AWS session
 	s := session.New(&aws.Config{Region: aws.String(awsRegion)})
 	if s == nil {
@@ -41,8 +42,9 @@ func NewECSClient(awsRegion string) (*ECSClient, error) {
 	}
 
 	return &ECSClient{
-		client:        ecs.New(s),
-		apiMaxResults: 100,
+		client:         ecs.New(s),
+		apiMaxResults:  100,
+		maxConcurrency: maxConcurrency,
 	}, nil
 }
 
@@ -135,7 +137,7 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 		return res, nil
 	}
 
-	servC := make(chan srvRes)
+	servC := make(chan srvRes, e.maxConcurrency)
 
 	// Only can grab 10 services at a time, create calls in blocks of 10 services
 	totalGr := 0 // counter for goroutines
@@ -154,35 +156,7 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 		}
 
 		totalGr++
-		// Make a call on goroutine for each service blocks
-		go func(services []*string) {
-			log.Debugf("Getting service descriptions for cluster: %s", cluster.Name)
-			params := &ecs.DescribeServicesInput{
-				Services: services,
-				Cluster:  aws.String(cluster.ID),
-			}
-			resp, err := e.client.DescribeServices(params)
-			if err != nil {
-				servC <- srvRes{nil, err}
-			}
-
-			ss := []*types.ECSService{}
-
-			for _, s := range resp.Services {
-				es := &types.ECSService{
-					ID:       aws.StringValue(s.ServiceArn),
-					Name:     aws.StringValue(s.ServiceName),
-					DesiredT: aws.Int64Value(s.DesiredCount),
-					RunningT: aws.Int64Value(s.RunningCount),
-					PendingT: aws.Int64Value(s.PendingCount),
-				}
-				ss = append(ss, es)
-			}
-
-			servC <- srvRes{ss, nil}
-
-		}(spss)
-
+		go e.callAWSAPI(servC, cluster, spss)
 	}
 
 	// Get all results
@@ -196,6 +170,33 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 
 	log.Debugf("Got %d services on cluster %s", len(res), cluster.Name)
 	return res, nil
+}
+
+func (e *ECSClient) callAWSAPI(results chan srvRes, cluster *types.ECSCluster, services []*string) {
+	ss := []*types.ECSService{}
+	params := &ecs.DescribeServicesInput{
+		Services: services,
+		Cluster:  aws.String(cluster.ID),
+	}
+
+	resp, err := e.client.DescribeServices(params)
+	if err != nil {
+		results <- srvRes{nil, err}
+		log.Debugf("Added error to the channel")
+	}
+
+	for _, s := range resp.Services {
+		es := &types.ECSService{
+			ID:       aws.StringValue(s.ServiceArn),
+			Name:     aws.StringValue(s.ServiceName),
+			DesiredT: aws.Int64Value(s.DesiredCount),
+			RunningT: aws.Int64Value(s.RunningCount),
+			PendingT: aws.Int64Value(s.PendingCount),
+		}
+		ss = append(ss, es)
+	}
+	results <- srvRes{ss, nil}
+	log.Debugf("Added %s results to the channel", len(ss))
 }
 
 // GetClusterContainerInstances will return all the container instances from a cluster

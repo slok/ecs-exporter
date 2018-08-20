@@ -96,8 +96,8 @@ type Exporter struct {
 }
 
 // New returns an initialized exporter
-func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*Exporter, error) {
-	c, err := NewECSClient(awsRegion)
+func New(awsRegion string, clusterFilterRegexp string, maxConcurrency int, disableCIMetrics bool) (*Exporter, error) {
+	c, err := NewECSClient(awsRegion, maxConcurrency)
 	if err != nil {
 		return nil, err
 	}
