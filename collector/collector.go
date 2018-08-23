@@ -87,17 +87,18 @@ var (
 
 // Exporter collects ECS clusters metrics
 type Exporter struct {
-	sync.Mutex                   // Our exporter object will be locakble to protect from concurrent scrapes
-	client        ECSGatherer    // Custom ECS client to get information from the clusters
-	region        string         // The region where the exporter will scrape
-	clusterFilter *regexp.Regexp // Compiled regular expresion to filter clusters
-	noCIMetrics   bool           // Don't gather container instance metrics
-	timeout       time.Duration  // The timeout for the whole gathering process
+	sync.Mutex                    // Our exporter object will be locakble to protect from concurrent scrapes
+	client         ECSGatherer    // Custom ECS client to get information from the clusters
+	region         string         // The region where the exporter will scrape
+	clusterFilter  *regexp.Regexp // Compiled regular expresion to filter clusters
+	noCIMetrics    bool           // Don't gather container instance metrics
+	timeout        time.Duration  // The timeout for the whole gathering process
+	maxConcurrency int            // The Maximum concurrency allowed for AWS operations
 }
 
 // New returns an initialized exporter
-func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*Exporter, error) {
-	c, err := NewECSClient(awsRegion)
+func New(awsRegion string, clusterFilterRegexp string, maxConcurrency int, disableCIMetrics bool) (*Exporter, error) {
+	c, err := NewECSClient(awsRegion, maxConcurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +178,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.collectClusterMetrics(ctx, ch, cs)
 
 	// Start getting metrics per cluster on its own goroutine
-	errC := make(chan bool)
+	errC := make(chan bool, e.maxConcurrency)
 	totalCs := 0 // total cluster metrics gorotine ran
 
 	for _, c := range cs {
