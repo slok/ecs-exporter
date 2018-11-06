@@ -108,7 +108,7 @@ func TestCollectError(t *testing.T) {
 			},
 		}
 
-		exp, err := New("eu-west-1", "", false)
+		exp, err := New("eu-west-1", "", 1, false)
 		if err != nil {
 			t.Errorf("Creation of exporter shouldn't error: %v", err)
 		}
@@ -604,7 +604,7 @@ func TestCollectOk(t *testing.T) {
 			cid: test.cCInstances,
 		}
 
-		exp, err := New("eu-west-1", test.cFilter, test.disableCIM)
+		exp, err := New("eu-west-1", test.cFilter, 1, test.disableCIM)
 		if err != nil {
 			t.Errorf("Creation of exporter shouldn't error: %v", err)
 		}
@@ -661,7 +661,7 @@ func TestCollectTimeoutNoPanic(t *testing.T) {
 		sleepFor: 10 * time.Millisecond,
 	}
 
-	exp, err := New("eu-west-1", ".*", false)
+	exp, err := New("eu-west-1", ".*", 1, false)
 	if err != nil {
 		t.Errorf("Creation of exporter shouldn't error: %v", err)
 	}

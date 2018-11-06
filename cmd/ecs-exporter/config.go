@@ -10,12 +10,13 @@ import (
 )
 
 const (
-	defaultListenAddress    = ":9222"
 	defaultAwsRegion        = ""
-	defaultMetricsPath      = "/metrics"
 	defaultClusterFilter    = ".*"
+	defaultConcurrency      = 5
 	defaultDebug            = false
 	defaultDisableCIMetrics = false
+	defaultListenAddress    = ":9222"
+	defaultMetricsPath      = "/metrics"
 )
 
 // Cfg is the global configuration
@@ -32,6 +33,7 @@ type config struct {
 
 	listenAddress    string
 	awsRegion        string
+	maxConcurrency   int
 	metricsPath      string
 	clusterFilter    string
 	debug            bool
@@ -54,6 +56,9 @@ func new() *config {
 
 	c.fs.StringVar(
 		&c.awsRegion, "aws.region", defaultAwsRegion, "The AWS region to get metrics from")
+
+	c.fs.IntVar(
+		&c.maxConcurrency, "concurrency", defaultConcurrency, "Max concurrency for API calls to AWS")
 
 	c.fs.StringVar(
 		&c.clusterFilter, "aws.cluster-filter", defaultClusterFilter, "Regex used to filter the cluster names, if doesn't match the cluster is ignored")
