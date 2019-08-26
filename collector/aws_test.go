@@ -99,21 +99,21 @@ func TestGetClusterServices(t *testing.T) {
 	}{
 		{
 			[]*types.ECSService{
-				&types.ECSService{ID: "s1", Name: "service1", PendingT: 1, RunningT: 9, DesiredT: 10},
-				&types.ECSService{ID: "s2", Name: "service2", PendingT: 5, RunningT: 5, DesiredT: 10},
-				&types.ECSService{ID: "s3", Name: "service3", PendingT: 7, RunningT: 3, DesiredT: 10},
+				&types.ECSService{ID: "s1", Name: "service1", PendingT: 1, RunningT: 9, DesiredT: 10, Deployments: 2},
+				&types.ECSService{ID: "s2", Name: "service2", PendingT: 5, RunningT: 5, DesiredT: 10, Deployments: 2},
+				&types.ECSService{ID: "s3", Name: "service3", PendingT: 7, RunningT: 3, DesiredT: 10, Deployments: 2},
 			},
 			false, false, false,
 		},
 		{
 			[]*types.ECSService{
-				&types.ECSService{ID: "s1", Name: "service1", PendingT: 1, RunningT: 9, DesiredT: 10},
+				&types.ECSService{ID: "s1", Name: "service1", PendingT: 1, RunningT: 9, DesiredT: 10, Deployments: 2},
 			},
 			true, false, true,
 		},
 		{
 			[]*types.ECSService{
-				&types.ECSService{ID: "s1", Name: "service1", PendingT: 1, RunningT: 9, DesiredT: 10},
+				&types.ECSService{ID: "s1", Name: "service1", PendingT: 1, RunningT: 9, DesiredT: 10, Deployments: 2},
 			},
 			true, true, true,
 		},
