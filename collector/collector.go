@@ -59,6 +59,12 @@ var (
 		[]string{"region", "cluster", "service"}, nil,
 	)
 
+	serviceDeployments = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "service_deployments"),
+		"The number of deployments regarding a service",
+		[]string{"region", "cluster", "service"}, nil,
+	)
+
 	//  Container instances metrics
 	cInstanceCount = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "container_instances"),
@@ -145,6 +151,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- serviceDesired
 	ch <- servicePending
 	ch <- serviceRunning
+	ch <- serviceDeployments
 
 	if e.noCIMetrics {
 		return
@@ -263,6 +270,9 @@ func (e *Exporter) collectClusterServicesMetrics(ctx context.Context, ch chan<- 
 
 		// Running task count
 		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(serviceRunning, prometheus.GaugeValue, float64(s.RunningT), e.region, cluster.Name, s.Name))
+
+		// Deployment count
+		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(serviceDeployments, prometheus.GaugeValue, float64(s.Deployments), e.region, cluster.Name, s.Name))
 	}
 }
 

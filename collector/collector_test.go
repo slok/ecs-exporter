@@ -83,12 +83,12 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 
 	testC := &types.ECSCluster{ID: "c1", Name: "cluster1"}
 	testSs := []*types.ECSService{
-		&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, PendingT: 5, RunningT: 5},
-		&types.ECSService{ID: "s2", Name: "service2", DesiredT: 15, PendingT: 5, RunningT: 10},
-		&types.ECSService{ID: "s3", Name: "service3", DesiredT: 30, PendingT: 27, RunningT: 0},
-		&types.ECSService{ID: "s4", Name: "service4", DesiredT: 51, PendingT: 50, RunningT: 1},
-		&types.ECSService{ID: "s5", Name: "service5", DesiredT: 109, PendingT: 99, RunningT: 2},
-		&types.ECSService{ID: "s6", Name: "service6", DesiredT: 6431, PendingT: 5000, RunningT: 107},
+		&types.ECSService{ID: "s1", Name: "service1", DesiredT: 10, PendingT: 5, RunningT: 5, Deployments: 2},
+		&types.ECSService{ID: "s2", Name: "service2", DesiredT: 15, PendingT: 5, RunningT: 10, Deployments: 2},
+		&types.ECSService{ID: "s3", Name: "service3", DesiredT: 30, PendingT: 27, RunningT: 0, Deployments: 2},
+		&types.ECSService{ID: "s4", Name: "service4", DesiredT: 51, PendingT: 50, RunningT: 1, Deployments: 2},
+		&types.ECSService{ID: "s5", Name: "service5", DesiredT: 109, PendingT: 99, RunningT: 2, Deployments: 2},
+		&types.ECSService{ID: "s6", Name: "service6", DesiredT: 6431, PendingT: 5000, RunningT: 107, Deployments: 2},
 	}
 	// Collect mocked metrics
 	go func() {
@@ -141,6 +141,18 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 			t.Errorf("expected %f service_running_tasks, got %f", want, m2.value)
 		}
 		expected = `Desc{fqName: "ecs_service_running_tasks", help: "The number of tasks in the cluster that are in the RUNNING state regarding a service", constLabels: {}, variableLabels: [region cluster service]}`
+		if expected != m.Desc().String() {
+			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
+		}
+
+		// Check 1st received metric  per service (deployments)
+		m = (<-ch).(prometheus.Metric)
+		m2 = readGauge(m)
+		want = float64(wantS.Deployments)
+		if m2.value != want {
+			t.Errorf("expected %f service_deployments, got %f", want, m2.value)
+		}
+		expected = `Desc{fqName: "ecs_service_deployments", help: "The number of deployments regarding a service", constLabels: {}, variableLabels: [region cluster service]}`
 		if expected != m.Desc().String() {
 			t.Errorf("expected '%s', \ngot '%s'", expected, m.Desc().String())
 		}

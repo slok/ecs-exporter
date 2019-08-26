@@ -92,6 +92,7 @@ func MockECSDescribeServices(t *testing.T, mockMatcher *sdk.MockECSAPI, wantErro
 			PendingCount: aws.Int64(s.PendingT),
 			RunningCount: aws.Int64(s.RunningT),
 			DesiredCount: aws.Int64(s.DesiredT),
+			Deployments:  make([]*ecs.Deployment, s.Deployments),
 		}
 		ss = append(ss, ds)
 	}

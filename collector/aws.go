@@ -170,11 +170,12 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 
 			for _, s := range resp.Services {
 				es := &types.ECSService{
-					ID:       aws.StringValue(s.ServiceArn),
-					Name:     aws.StringValue(s.ServiceName),
-					DesiredT: aws.Int64Value(s.DesiredCount),
-					RunningT: aws.Int64Value(s.RunningCount),
-					PendingT: aws.Int64Value(s.PendingCount),
+					ID:          aws.StringValue(s.ServiceArn),
+					Name:        aws.StringValue(s.ServiceName),
+					DesiredT:    aws.Int64Value(s.DesiredCount),
+					RunningT:    aws.Int64Value(s.RunningCount),
+					PendingT:    aws.Int64Value(s.PendingCount),
+					Deployments: len(s.Deployments),
 				}
 				ss = append(ss, es)
 			}
