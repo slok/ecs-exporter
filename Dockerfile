@@ -1,4 +1,4 @@
-FROM golang:1.9-alpine
+FROM golang:1.16-alpine
 
 
 RUN apk --update add musl-dev gcc tar git bash wget && rm -rf /var/cache/apk/*
