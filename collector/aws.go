@@ -141,7 +141,7 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 	totalGr := 0 // counter for goroutines
 	for i := 0; i <= len(sArns)/maxServicesAPI; i++ {
 		st := i * maxServicesAPI
-		// Check if the last call is neccesary (las call only made when the division remaider is present)
+		// Check if the last call is necessary (last call only made when the division remainder is present)
 		if st >= len(sArns) {
 			break
 		}

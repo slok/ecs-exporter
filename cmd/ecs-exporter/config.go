@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/slok/ecs-exporter/log"
 )
@@ -16,6 +17,7 @@ const (
 	defaultClusterFilter    = ".*"
 	defaultDebug            = false
 	defaultDisableCIMetrics = false
+	defaultCollectTimeout   = 20 * time.Second
 )
 
 // Cfg is the global configuration
@@ -36,6 +38,7 @@ type config struct {
 	clusterFilter    string
 	debug            bool
 	disableCIMetrics bool
+	collectTimeout   time.Duration
 }
 
 // init will load all the flags
@@ -66,6 +69,9 @@ func new() *config {
 
 	c.fs.BoolVar(
 		&c.disableCIMetrics, "metrics.disable-cinstances", defaultDisableCIMetrics, "Disable clusters container instances metrics gathering")
+
+	c.fs.DurationVar(
+		&c.collectTimeout, "metrics.collect-timeout", defaultCollectTimeout, "The timeout for the whole gathering process")
 
 	return c
 }

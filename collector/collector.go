@@ -15,7 +15,6 @@ import (
 
 const (
 	namespace = "ecs"
-	timeout   = 10 * time.Second
 )
 
 // Metrics descriptions
@@ -96,7 +95,7 @@ type Exporter struct {
 }
 
 // New returns an initialized exporter
-func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*Exporter, error) {
+func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, collectTimeout time.Duration) (*Exporter, error) {
 	c, err := NewECSClient(awsRegion)
 	if err != nil {
 		return nil, err
@@ -113,15 +112,15 @@ func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool) (*
 		region:        awsRegion,
 		clusterFilter: cRegexp,
 		noCIMetrics:   disableCIMetrics,
-		timeout:       timeout,
+		timeout:       collectTimeout,
 	}, nil
 
 }
 
 // sendSafeMetric uses context to cancel the send over a closed channel.
-// If a main function finishes (for example due to to timeout), the goroutines running in background will
+// If a main function finishes (for example due to the timeout), the goroutines running in background will
 // try to send metrics over a closed channel, this will panic, this way the context will check first
-// if the iteraiton has been finished and dont let continue sending the metric
+// if the iteration has been finished and don't let continue sending the metric
 func sendSafeMetric(ctx context.Context, ch chan<- prometheus.Metric, metric prometheus.Metric) error {
 	// Check if iteration has finished
 	select {
@@ -159,13 +158,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect fetches the stats from configured ECS and delivers them
 // as Prometheus metrics. It implements prometheus.Collector
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	log.Debugf("Start collecting...")
+	ts := time.Now()
+	log.Debugf("Start collecting... DS")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	e.Lock()
 	defer e.Unlock()
-
+	log.Debugf("Start collecting after lock")
 	// Get clusters
 	cs, err := e.client.GetClusters()
 	if err != nil {
@@ -175,6 +175,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	e.collectClusterMetrics(ctx, ch, cs)
+	log.Debugf("cluster metrics collected")
 
 	// Start getting metrics per cluster on its own goroutine
 	errC := make(chan bool)
@@ -187,7 +188,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 		totalCs++
+		log.Debugf("valid cluster found; totalCs: %d", totalCs)
 		go func(c types.ECSCluster) {
+			log.Debugf("go routine: start")
 			// Get services
 			ss, err := e.client.GetClusterServices(&c)
 			if err != nil {
@@ -196,6 +199,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			e.collectClusterServicesMetrics(ctx, ch, &c, ss)
+			log.Debugf("go routine: cluster services metrics collected")
 
 			// Get container instance metrics (if enabled)
 			if e.noCIMetrics {
@@ -211,6 +215,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			e.collectClusterContainerInstancesMetrics(ctx, ch, &c, cs)
+			log.Debugf("go routine: container instances metrics collected")
 
 			errC <- false
 		}(*c)
@@ -218,6 +223,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Grab result or not result error for each goroutine, on first error exit
 	result := float64(1)
+	log.Debugf("Total %d go routines is running", totalCs)
 
 ServiceCollector:
 	for i := 0; i < totalCs; i++ {
@@ -237,6 +243,7 @@ ServiceCollector:
 	ch <- prometheus.MustNewConstMetric(
 		up, prometheus.GaugeValue, result, e.region,
 	)
+	log.Debugf("Collect finished, elapsed time: %s", time.Since(ts).String())
 }
 
 // validCluster will return true if the cluster is valid for the exporter cluster filtering regexp, otherwise false

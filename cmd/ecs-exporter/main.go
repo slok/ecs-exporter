@@ -5,6 +5,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -14,8 +15,8 @@ import (
 
 // Main is the application entry point
 func Main() int {
-	log.Infof("Starting ECS exporter...")
-
+	log.Infof("Starting ECS exporter...info")
+	log.Debugf("Starting ECS exporter...debug")
 	// Parse command line flags
 	if err := parse(os.Args[1:]); err != nil {
 		log.Error(err)
@@ -39,7 +40,13 @@ func Main() int {
 	prometheus.MustRegister(exporter)
 
 	// Serve metrics
-	http.Handle(cfg.metricsPath, prometheus.Handler())
+	//http.Handle(cfg.metricsPath, prometheus.Handler())
+	http.HandleFunc(cfg.metricsPath, func(writer http.ResponseWriter, request *http.Request) {
+		log.Debugf("/metrics call")
+		ts := time.Now()
+		prometheus.Handler().ServeHTTP(writer, request)
+		log.Debugf("/metrics retrieve time: %s", time.Since(ts).String())
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>ECS Exporter</title></head>
