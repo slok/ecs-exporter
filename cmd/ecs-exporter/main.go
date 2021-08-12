@@ -15,8 +15,7 @@ import (
 
 // Main is the application entry point
 func Main() int {
-	log.Infof("Starting ECS exporter...info")
-	log.Debugf("Starting ECS exporter...debug")
+	log.Infof("Starting ECS exporter...")
 	// Parse command line flags
 	if err := parse(os.Args[1:]); err != nil {
 		log.Error(err)
@@ -32,7 +31,7 @@ func Main() int {
 	}
 
 	// Create the exporter and register it
-	exporter, err := collector.New(cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics)
+	exporter, err := collector.New(cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics, cfg.collectTimeout)
 	if err != nil {
 		log.Error(err)
 		return 1
@@ -42,7 +41,6 @@ func Main() int {
 	// Serve metrics
 	//http.Handle(cfg.metricsPath, prometheus.Handler())
 	http.HandleFunc(cfg.metricsPath, func(writer http.ResponseWriter, request *http.Request) {
-		log.Debugf("/metrics call")
 		ts := time.Now()
 		prometheus.Handler().ServeHTTP(writer, request)
 		log.Debugf("/metrics retrieve time: %s", time.Since(ts).String())

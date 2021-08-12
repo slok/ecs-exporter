@@ -159,13 +159,13 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // as Prometheus metrics. It implements prometheus.Collector
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ts := time.Now()
-	log.Debugf("Start collecting... DS")
+	log.Debugf("Start collecting...")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	e.Lock()
 	defer e.Unlock()
-	log.Debugf("Start collecting after lock")
+
 	// Get clusters
 	cs, err := e.client.GetClusters()
 	if err != nil {
@@ -175,7 +175,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	e.collectClusterMetrics(ctx, ch, cs)
-	log.Debugf("cluster metrics collected")
 
 	// Start getting metrics per cluster on its own goroutine
 	errC := make(chan bool)
@@ -188,9 +187,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 		totalCs++
-		log.Debugf("valid cluster found; totalCs: %d", totalCs)
+		log.Debugf("Valid cluster found: %s", c.Name)
+
 		go func(c types.ECSCluster) {
-			log.Debugf("go routine: start")
 			// Get services
 			ss, err := e.client.GetClusterServices(&c)
 			if err != nil {
@@ -199,7 +198,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			e.collectClusterServicesMetrics(ctx, ch, &c, ss)
-			log.Debugf("go routine: cluster services metrics collected")
 
 			// Get container instance metrics (if enabled)
 			if e.noCIMetrics {
@@ -215,7 +213,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			e.collectClusterContainerInstancesMetrics(ctx, ch, &c, cs)
-			log.Debugf("go routine: container instances metrics collected")
 
 			errC <- false
 		}(*c)
@@ -223,7 +220,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Grab result or not result error for each goroutine, on first error exit
 	result := float64(1)
-	log.Debugf("Total %d go routines is running", totalCs)
 
 ServiceCollector:
 	for i := 0; i < totalCs; i++ {
