@@ -86,17 +86,17 @@ var (
 
 // Exporter collects ECS clusters metrics
 type Exporter struct {
-	sync.Mutex                    // Our exporter object will be locakble to protect from concurrent scrapes
+	sync.Mutex                    // Our exporter object will be lockable to protect from concurrent scrapes
 	client         ECSGatherer    // Custom ECS client to get information from the clusters
 	region         string         // The region where the exporter will scrape
-	clusterFilter  *regexp.Regexp // Compiled regular expresion to filter clusters
+	clusterFilter  *regexp.Regexp // Compiled regular expression to filter clusters
 	noCIMetrics    bool           // Don't gather container instance metrics
 	timeout        time.Duration  // The timeout for the whole gathering process
 	maxConcurrency int            // Max number of go routines to get metrics for cluster
 }
 
 // New returns an initialized exporter
-func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, collectTimeout time.Duration,
+func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, collectTimeout int64,
 	maxConcurrency int) (*Exporter, error) {
 	c, err := NewECSClient(awsRegion)
 	if err != nil {
@@ -114,7 +114,7 @@ func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, co
 		region:         awsRegion,
 		clusterFilter:  cRegexp,
 		noCIMetrics:    disableCIMetrics,
-		timeout:        collectTimeout,
+		timeout:        time.Second * time.Duration(collectTimeout),
 		maxConcurrency: maxConcurrency,
 	}, nil
 
@@ -183,7 +183,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	errC := make(chan bool)
 	totalCs := 0 // total cluster metrics gorotine ran
 	// prevents too many AWS api requests running in parallel
-	concurrencyGuard := make(chan struct{}, 2)
+	concurrencyGuard := make(chan struct{}, e.maxConcurrency)
 
 	for _, c := range cs {
 		// Filter not desired clusters

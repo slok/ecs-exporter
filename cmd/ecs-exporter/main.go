@@ -5,7 +5,6 @@ package main
 import (
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -42,12 +41,7 @@ func Main() int {
 	prometheus.MustRegister(exporter)
 
 	// Serve metrics
-	//http.Handle(cfg.metricsPath, prometheus.Handler())
-	http.HandleFunc(cfg.metricsPath, func(writer http.ResponseWriter, request *http.Request) {
-		ts := time.Now()
-		prometheus.Handler().ServeHTTP(writer, request)
-		log.Debugf("/metrics retrieve time: %s", time.Since(ts).String())
-	})
+	http.Handle(cfg.metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>ECS Exporter</title></head>

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -12,7 +11,7 @@ import (
 )
 
 const (
-	defaultCollectTimeout = 20 * time.Second
+	defaultCollectTimeout = 20
 	defaultMaxConcurrency = 1
 )
 

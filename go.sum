@@ -14,6 +14,8 @@ github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813122155-053daee8aab3 h1:xw
 github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813122155-053daee8aab3/go.mod h1:pVNrkLwnpdTt/PUR2WWwO/iNIB3k23kQVsR5GFa+8+g=
 github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813125702-c91019d6529f h1:CcrVa9onc1CFYUEpjzoVNGyWUmUC70PAoyqu+qWs0rw=
 github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813125702-c91019d6529f/go.mod h1:pVNrkLwnpdTt/PUR2WWwO/iNIB3k23kQVsR5GFa+8+g=
+github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813144012-431c2d1c0b6e h1:nPTj4XkwzXphz8ILms9keU4orTRuOtkMnP88FIu7qKY=
+github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813144012-431c2d1c0b6e/go.mod h1:sMsF6XAC/mqkcUD5DsHdVf+YGqJr6cIZg+49ELiLF+g=
 github.com/go-ini/ini v1.21.2-0.20161120031036-2ba15ac2dc9c h1:sgsTs+gMEkMAK/Hbf5Ut/PYCP2MTjDBrnvShpq7yFHo=
 github.com/go-ini/ini v1.21.2-0.20161120031036-2ba15ac2dc9c/go.mod h1:ByCAeIL28uOIIG0E3PJtZPDL8WnHpFKFOtgjp+3Ies8=
 github.com/golang/mock v0.0.0-20160127222235-bd3c8e81be01 h1:rtnkE5nwSSDcZrbt4gcVsFPeSXXe7Nq2vCn9DBb0Y8I=
