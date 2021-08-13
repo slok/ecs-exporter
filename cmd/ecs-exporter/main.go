@@ -29,9 +29,12 @@ func Main() int {
 	if cfg.disableCIMetrics {
 		log.Warnf("Cluster container instance metrics have been disabled")
 	}
+	log.Infof("Config: aws-region=%s, clusterFilter=%s, disableCIMetrics=%t, collectTimeout=%d, maxConcurrency=%d",
+		cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics, cfg.collectTimeout, cfg.maxConcurrency)
 
 	// Create the exporter and register it
-	exporter, err := collector.New(cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics, cfg.collectTimeout)
+	exporter, err := collector.New(cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics, cfg.collectTimeout,
+		cfg.maxConcurrency)
 	if err != nil {
 		log.Error(err)
 		return 1

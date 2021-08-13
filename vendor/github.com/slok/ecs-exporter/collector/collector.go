@@ -86,16 +86,18 @@ var (
 
 // Exporter collects ECS clusters metrics
 type Exporter struct {
-	sync.Mutex                   // Our exporter object will be locakble to protect from concurrent scrapes
-	client        ECSGatherer    // Custom ECS client to get information from the clusters
-	region        string         // The region where the exporter will scrape
-	clusterFilter *regexp.Regexp // Compiled regular expresion to filter clusters
-	noCIMetrics   bool           // Don't gather container instance metrics
-	timeout       time.Duration  // The timeout for the whole gathering process
+	sync.Mutex                    // Our exporter object will be locakble to protect from concurrent scrapes
+	client         ECSGatherer    // Custom ECS client to get information from the clusters
+	region         string         // The region where the exporter will scrape
+	clusterFilter  *regexp.Regexp // Compiled regular expresion to filter clusters
+	noCIMetrics    bool           // Don't gather container instance metrics
+	timeout        time.Duration  // The timeout for the whole gathering process
+	maxConcurrency int            // Max number of go routines to get metrics for cluster
 }
 
 // New returns an initialized exporter
-func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, collectTimeout time.Duration) (*Exporter, error) {
+func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, collectTimeout time.Duration,
+	maxConcurrency int) (*Exporter, error) {
 	c, err := NewECSClient(awsRegion)
 	if err != nil {
 		return nil, err
@@ -107,12 +109,13 @@ func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, co
 	}
 
 	return &Exporter{
-		Mutex:         sync.Mutex{},
-		client:        c,
-		region:        awsRegion,
-		clusterFilter: cRegexp,
-		noCIMetrics:   disableCIMetrics,
-		timeout:       collectTimeout,
+		Mutex:          sync.Mutex{},
+		client:         c,
+		region:         awsRegion,
+		clusterFilter:  cRegexp,
+		noCIMetrics:    disableCIMetrics,
+		timeout:        collectTimeout,
+		maxConcurrency: maxConcurrency,
 	}, nil
 
 }
@@ -159,13 +162,13 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // as Prometheus metrics. It implements prometheus.Collector
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ts := time.Now()
-	log.Debugf("Start collecting... DS")
+	log.Debugf("Start collecting...")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	e.Lock()
 	defer e.Unlock()
-	log.Debugf("Start collecting after lock")
+
 	// Get clusters
 	cs, err := e.client.GetClusters()
 	if err != nil {
@@ -175,11 +178,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	e.collectClusterMetrics(ctx, ch, cs)
-	log.Debugf("cluster metrics collected")
 
 	// Start getting metrics per cluster on its own goroutine
 	errC := make(chan bool)
 	totalCs := 0 // total cluster metrics gorotine ran
+	// prevents too many AWS api requests running in parallel
+	concurrencyGuard := make(chan struct{}, 2)
 
 	for _, c := range cs {
 		// Filter not desired clusters
@@ -188,9 +192,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 		totalCs++
-		log.Debugf("valid cluster found; totalCs: %d", totalCs)
+		log.Debugf("Valid cluster found: %s", c.Name)
+
+		// "lock" concurrency guard
+		concurrencyGuard <- struct{}{}
+
 		go func(c types.ECSCluster) {
-			log.Debugf("go routine: start")
 			// Get services
 			ss, err := e.client.GetClusterServices(&c)
 			if err != nil {
@@ -199,7 +206,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			e.collectClusterServicesMetrics(ctx, ch, &c, ss)
-			log.Debugf("go routine: cluster services metrics collected")
 
 			// Get container instance metrics (if enabled)
 			if e.noCIMetrics {
@@ -215,15 +221,15 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			e.collectClusterContainerInstancesMetrics(ctx, ch, &c, cs)
-			log.Debugf("go routine: container instances metrics collected")
 
+			// release concurrency guard
+			<-concurrencyGuard
 			errC <- false
 		}(*c)
 	}
 
 	// Grab result or not result error for each goroutine, on first error exit
 	result := float64(1)
-	log.Debugf("Total %d go routines is running", totalCs)
 
 ServiceCollector:
 	for i := 0; i < totalCs; i++ {

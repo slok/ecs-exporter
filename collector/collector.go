@@ -86,16 +86,18 @@ var (
 
 // Exporter collects ECS clusters metrics
 type Exporter struct {
-	sync.Mutex                   // Our exporter object will be locakble to protect from concurrent scrapes
-	client        ECSGatherer    // Custom ECS client to get information from the clusters
-	region        string         // The region where the exporter will scrape
-	clusterFilter *regexp.Regexp // Compiled regular expresion to filter clusters
-	noCIMetrics   bool           // Don't gather container instance metrics
-	timeout       time.Duration  // The timeout for the whole gathering process
+	sync.Mutex                    // Our exporter object will be locakble to protect from concurrent scrapes
+	client         ECSGatherer    // Custom ECS client to get information from the clusters
+	region         string         // The region where the exporter will scrape
+	clusterFilter  *regexp.Regexp // Compiled regular expresion to filter clusters
+	noCIMetrics    bool           // Don't gather container instance metrics
+	timeout        time.Duration  // The timeout for the whole gathering process
+	maxConcurrency int            // Max number of go routines to get metrics for cluster
 }
 
 // New returns an initialized exporter
-func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, collectTimeout time.Duration) (*Exporter, error) {
+func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, collectTimeout time.Duration,
+	maxConcurrency int) (*Exporter, error) {
 	c, err := NewECSClient(awsRegion)
 	if err != nil {
 		return nil, err
@@ -107,12 +109,13 @@ func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, co
 	}
 
 	return &Exporter{
-		Mutex:         sync.Mutex{},
-		client:        c,
-		region:        awsRegion,
-		clusterFilter: cRegexp,
-		noCIMetrics:   disableCIMetrics,
-		timeout:       collectTimeout,
+		Mutex:          sync.Mutex{},
+		client:         c,
+		region:         awsRegion,
+		clusterFilter:  cRegexp,
+		noCIMetrics:    disableCIMetrics,
+		timeout:        collectTimeout,
+		maxConcurrency: maxConcurrency,
 	}, nil
 
 }
@@ -179,6 +182,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	// Start getting metrics per cluster on its own goroutine
 	errC := make(chan bool)
 	totalCs := 0 // total cluster metrics gorotine ran
+	// prevents too many AWS api requests running in parallel
+	concurrencyGuard := make(chan struct{}, 2)
 
 	for _, c := range cs {
 		// Filter not desired clusters
@@ -188,6 +193,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 		totalCs++
 		log.Debugf("Valid cluster found: %s", c.Name)
+
+		// "lock" concurrency guard
+		concurrencyGuard <- struct{}{}
 
 		go func(c types.ECSCluster) {
 			// Get services
@@ -214,6 +222,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			}
 			e.collectClusterContainerInstancesMetrics(ctx, ch, &c, cs)
 
+			// release concurrency guard
+			<-concurrencyGuard
 			errC <- false
 		}(*c)
 	}

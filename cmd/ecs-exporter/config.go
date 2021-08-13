@@ -18,6 +18,7 @@ const (
 	defaultDebug            = false
 	defaultDisableCIMetrics = false
 	defaultCollectTimeout   = 20 * time.Second
+	defaultMaxConcurrency   = 2
 )
 
 // Cfg is the global configuration
@@ -39,6 +40,7 @@ type config struct {
 	debug            bool
 	disableCIMetrics bool
 	collectTimeout   time.Duration
+	maxConcurrency   int
 }
 
 // init will load all the flags
@@ -72,6 +74,9 @@ func new() *config {
 
 	c.fs.DurationVar(
 		&c.collectTimeout, "metrics.collect-timeout", defaultCollectTimeout, "The timeout for the whole gathering process")
+
+	c.fs.IntVar(
+		&c.maxConcurrency, "metrics.max-concurrency", defaultMaxConcurrency, "Max number of go routines to get metrics for cluster")
 
 	return c
 }

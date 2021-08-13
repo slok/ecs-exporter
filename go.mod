@@ -21,4 +21,6 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 )
 
-replace github.com/slok/ecs-exporter => github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210812145728-7306c1f4cb5a
+replace github.com/slok/ecs-exporter => github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813125702-c91019d6529f
+
+//replace github.com/slok/ecs-exporter => /home/dsimek/go/src/github.com/form3tech-oss/ecs-exporter

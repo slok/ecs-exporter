@@ -11,7 +11,10 @@ import (
 	"github.com/slok/ecs-exporter/types"
 )
 
-const defaultCollectTimeout = 20 * time.Second
+const (
+	defaultCollectTimeout = 20 * time.Second
+	defaultMaxConcurrency = 1
+)
 
 type metricResult struct {
 	value  float64
@@ -38,7 +41,7 @@ func readGauge(g prometheus.Metric) metricResult {
 
 func TestCollectClusterMetrics(t *testing.T) {
 	region := "eu-west-1"
-	exp, err := New(region, "", false, defaultCollectTimeout)
+	exp, err := New(region, "", false, defaultCollectTimeout, defaultMaxConcurrency)
 	if err != nil {
 		t.Errorf("Creation of exporter shoudnt error: %v", err)
 	}
@@ -77,7 +80,7 @@ func TestCollectClusterMetrics(t *testing.T) {
 
 func TestCollectClusterServiceMetrics(t *testing.T) {
 	region := "eu-west-1"
-	exp, err := New(region, "", false, defaultCollectTimeout)
+	exp, err := New(region, "", false, defaultCollectTimeout, defaultMaxConcurrency)
 	if err != nil {
 		t.Errorf("Creation of exporter shouldnt error: %v", err)
 	}
@@ -152,7 +155,7 @@ func TestCollectClusterServiceMetrics(t *testing.T) {
 
 func TestCollectClusterContainerInstanceMetrics(t *testing.T) {
 	region := "eu-west-1"
-	exp, err := New(region, "", false, defaultCollectTimeout)
+	exp, err := New(region, "", false, defaultCollectTimeout, defaultMaxConcurrency)
 	if err != nil {
 		t.Errorf("Creation of exporter shouldnt error: %v", err)
 	}
@@ -283,7 +286,7 @@ func TestValidClusters(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		e, err := New("eu-west-1", test.filter, false, defaultCollectTimeout)
+		e, err := New("eu-west-1", test.filter, false, defaultCollectTimeout, defaultMaxConcurrency)
 		if err != nil {
 			t.Errorf("Creation of exporter shoudn't error: %v", err)
 		}
@@ -312,7 +315,7 @@ func TestCollectClusterMetricsTimeout(t *testing.T) {
 		}
 	}()
 
-	exp, _ := New("eu-west-1", "", false, defaultCollectTimeout)
+	exp, _ := New("eu-west-1", "", false, defaultCollectTimeout, defaultMaxConcurrency)
 	ch := make(chan prometheus.Metric)
 	close(ch)
 
@@ -331,7 +334,7 @@ func TestCollectClusterServiceMetricsTimeout(t *testing.T) {
 		}
 	}()
 
-	exp, _ := New("eu-west-1", "", false, defaultCollectTimeout)
+	exp, _ := New("eu-west-1", "", false, defaultCollectTimeout, defaultMaxConcurrency)
 	ch := make(chan prometheus.Metric)
 	close(ch)
 
@@ -351,7 +354,7 @@ func TestCollectContainerInstanceMetricsTimeout(t *testing.T) {
 		}
 	}()
 
-	exp, _ := New("eu-west-1", "", false, defaultCollectTimeout)
+	exp, _ := New("eu-west-1", "", false, defaultCollectTimeout, defaultMaxConcurrency)
 	ch := make(chan prometheus.Metric)
 	close(ch)
 
