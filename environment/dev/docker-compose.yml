@@ -5,7 +5,7 @@ services:
       context: ../..
       dockerfile: environment/dev/Dockerfile
     volumes:
-      - ../..:/go/src/github.com/slok/ecs-exporter
+      - ../..:/go/src/github.com/form3tech-oss/ecs-exporter
       - ~/.gitconfig:/home/exs-exporter/.gitignore:ro
       - ~/.ssh:/home/ecs-exporter/.ssh:ro
       - ~/.bash_history.ecs-exporter:/home/ecs-exporter/.bash_history

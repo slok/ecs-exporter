@@ -8,13 +8,14 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/slok/ecs-exporter/collector"
-	"github.com/slok/ecs-exporter/log"
+	"github.com/form3tech-oss/ecs-exporter/collector"
+	"github.com/form3tech-oss/ecs-exporter/log"
 )
 
 // Main is the application entry point
 func Main() int {
 	log.Infof("Starting ECS exporter...")
+
 	// Parse command line flags
 	if err := parse(os.Args[1:]); err != nil {
 		log.Error(err)

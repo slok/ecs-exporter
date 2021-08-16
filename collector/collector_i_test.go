@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/slok/ecs-exporter/types"
+	"github.com/form3tech-oss/ecs-exporter/types"
 )
 
 type ECSMockClient struct {

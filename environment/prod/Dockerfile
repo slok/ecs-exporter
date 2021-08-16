@@ -3,7 +3,7 @@ FROM slok/ecs-exporter_base:latest
 USER root
 
 # Prepare
-WORKDIR /go/src/github.com/slok/ecs-exporter/
+WORKDIR /go/src/github.com/form3tech-oss/ecs-exporter/
 RUN mkdir -p /bin
 COPY . ./
 

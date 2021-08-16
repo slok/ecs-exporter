@@ -9,8 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 
-	"github.com/slok/ecs-exporter/log"
-	"github.com/slok/ecs-exporter/types"
+	"github.com/form3tech-oss/ecs-exporter/log"
+	"github.com/form3tech-oss/ecs-exporter/types"
 )
 
 const (

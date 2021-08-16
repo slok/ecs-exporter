@@ -9,9 +9,9 @@ ARG gid=1000
 RUN addgroup -g $gid ecs-exporter
 RUN adduser -D -u $uid -G ecs-exporter ecs-exporter
 
-RUN mkdir -p /go/src/github.com/slok/ecs-exporter/
+RUN mkdir -p /go/src/github.com/form3tech-oss/ecs-exporter/
 RUN chown -R ecs-exporter:ecs-exporter /go
 
-WORKDIR /go/src/github.com/slok/ecs-exporter/
+WORKDIR /go/src/github.com/form3tech-oss/ecs-exporter/
 
 USER ecs-exporter
