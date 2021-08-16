@@ -168,6 +168,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	e.Lock()
 	defer e.Unlock()
+	log.Debugf("Start collecting...2")
 
 	// Get clusters
 	cs, err := e.client.GetClusters()
@@ -181,7 +182,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Start getting metrics per cluster on its own goroutine
 	errC := make(chan bool)
-	totalCs := 0 // total cluster metrics gorotine ran
+	totalCs := 0 // total cluster metrics goroutine ran
 	// prevents too many AWS api requests running in parallel
 	concurrencyGuard := make(chan struct{}, e.maxConcurrency)
 
@@ -198,6 +199,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		concurrencyGuard <- struct{}{}
 
 		go func(c types.ECSCluster) {
+			// release concurrency guard
+			//defer func() {
+			//	log.Debugf("go routine [%d]: RELEASE", totalCs)
+			//	<-concurrencyGuard
+			//}()
+			log.Debugf("go routine [%d]: 1", totalCs)
 			// Get services
 			ss, err := e.client.GetClusterServices(&c)
 			if err != nil {
@@ -206,6 +213,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			e.collectClusterServicesMetrics(ctx, ch, &c, ss)
+			log.Debugf("go routine [%d]: 2", totalCs)
 
 			// Get container instance metrics (if enabled)
 			if e.noCIMetrics {
@@ -213,6 +221,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				errC <- false
 				return
 			}
+			log.Debugf("go routine [%d]: 3", totalCs)
 
 			cs, err := e.client.GetClusterContainerInstances(&c)
 			if err != nil {
@@ -221,8 +230,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			e.collectClusterContainerInstancesMetrics(ctx, ch, &c, cs)
+			log.Debugf("go routine [%d]: 4", totalCs)
 
-			// release concurrency guard
 			<-concurrencyGuard
 			errC <- false
 		}(*c)
