@@ -6,16 +6,6 @@ github.com/beorn7/perks v0.0.0-20160804104726-4c0e84591b9a h1:BtpsbiV638WQZwhA98
 github.com/beorn7/perks v0.0.0-20160804104726-4c0e84591b9a/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210812142458-71e54261b538 h1:QHrDaX9JN9Tf55x9SQ8s2So4usyn+u3TfBLrI6u8mjY=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210812142458-71e54261b538/go.mod h1:Qbi+JwNW8Nloq87lJ1m9feMNPqCWDmH2PRhNsJRG7XA=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210812145728-7306c1f4cb5a h1:wH6YRFAShoQIH/NgWLKWcxsHBgxAFNr0DRoEqvh3ygk=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210812145728-7306c1f4cb5a/go.mod h1:Qbc7Sf0WvQ70PHWzfTyQPj+spIpJ15CDfPG+5qf5eHg=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813122155-053daee8aab3 h1:xwsskT4EFxzHUW3eZkCMMqibjvoVJBhytKs+fy/YqsI=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813122155-053daee8aab3/go.mod h1:pVNrkLwnpdTt/PUR2WWwO/iNIB3k23kQVsR5GFa+8+g=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813125702-c91019d6529f h1:CcrVa9onc1CFYUEpjzoVNGyWUmUC70PAoyqu+qWs0rw=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813125702-c91019d6529f/go.mod h1:pVNrkLwnpdTt/PUR2WWwO/iNIB3k23kQVsR5GFa+8+g=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813144012-431c2d1c0b6e h1:nPTj4XkwzXphz8ILms9keU4orTRuOtkMnP88FIu7qKY=
-github.com/form3tech-oss/ecs-exporter v1.1.2-0.20210813144012-431c2d1c0b6e/go.mod h1:sMsF6XAC/mqkcUD5DsHdVf+YGqJr6cIZg+49ELiLF+g=
 github.com/go-ini/ini v1.21.2-0.20161120031036-2ba15ac2dc9c h1:sgsTs+gMEkMAK/Hbf5Ut/PYCP2MTjDBrnvShpq7yFHo=
 github.com/go-ini/ini v1.21.2-0.20161120031036-2ba15ac2dc9c/go.mod h1:ByCAeIL28uOIIG0E3PJtZPDL8WnHpFKFOtgjp+3Ies8=
 github.com/golang/mock v0.0.0-20160127222235-bd3c8e81be01 h1:rtnkE5nwSSDcZrbt4gcVsFPeSXXe7Nq2vCn9DBb0Y8I=
@@ -40,8 +30,6 @@ github.com/prometheus/common v0.0.0-20161114134743-0d5de9d6d862 h1:lwIy6DlN999vS
 github.com/prometheus/common v0.0.0-20161114134743-0d5de9d6d862/go.mod h1:daVV7qP5qjZbuso7PdcryaAu0sAZbrN9i7WWcTMWvro=
 github.com/prometheus/procfs v0.0.0-20160411190841-abf152e5f3e9 h1:ex32PG6WhE5zviWS08vcXTwX2IkaH9zpeYZZvrmj3/U=
 github.com/prometheus/procfs v0.0.0-20160411190841-abf152e5f3e9/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
-github.com/slok/ecs-exporter v1.1.1 h1:pjhRxRcwHL/7bUv6PJ1GRtaEpEc8qZDPG4x6AKiEDL8=
-github.com/slok/ecs-exporter v1.1.1/go.mod h1:Q0Ol4XYgrBsjuCuy1jhURQICXelAJSQN1jEIkXoyUIY=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d h1:zE9ykElWQ6/NYmHa3jpm/yHnI4xSofP+UP6SpjHcSeM=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
 github.com/smartystreets/goconvey v1.6.4 h1:fv0U8FUIMPNf1L9lnHLvLhgicrIVChEkdzIKYqbNC9s=
