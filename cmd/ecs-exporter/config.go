@@ -3,10 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/form3tech-oss/ecs-exporter/log"
 	"os"
 	"regexp"
-
-	"github.com/form3tech-oss/ecs-exporter/log"
 )
 
 const (
@@ -39,7 +38,7 @@ type config struct {
 	debug            bool
 	disableCIMetrics bool
 	collectTimeout   int64
-	maxConcurrency   int
+	maxConcurrency   int64
 }
 
 // init will load all the flags
@@ -74,7 +73,7 @@ func new() *config {
 	c.fs.Int64Var(
 		&c.collectTimeout, "metrics.collect-timeout", defaultCollectTimeout, "The timeout (in seconds) for the whole gathering process")
 
-	c.fs.IntVar(
+	c.fs.Int64Var(
 		&c.maxConcurrency, "metrics.max-concurrency", defaultMaxConcurrency, "Max number of go routines to get metrics for cluster")
 
 	return c

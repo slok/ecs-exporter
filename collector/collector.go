@@ -2,9 +2,13 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -92,12 +96,12 @@ type Exporter struct {
 	clusterFilter  *regexp.Regexp // Compiled regular expression to filter clusters
 	noCIMetrics    bool           // Don't gather container instance metrics
 	timeout        time.Duration  // The timeout for the whole gathering process
-	maxConcurrency int            // Max number of go routines to get metrics for cluster
+	maxConcurrency int64          // Max number of go routines to get metrics for cluster
 }
 
 // New returns an initialized exporter
 func New(awsRegion string, clusterFilterRegexp string, disableCIMetrics bool, collectTimeout int64,
-	maxConcurrency int) (*Exporter, error) {
+	maxConcurrency int64) (*Exporter, error) {
 	c, err := NewECSClient(awsRegion)
 	if err != nil {
 		return nil, err
@@ -128,7 +132,6 @@ func sendSafeMetric(ctx context.Context, ch chan<- prometheus.Metric, metric pro
 	// Check if iteration has finished
 	select {
 	case <-ctx.Done():
-		log.Errorf("Tried to send a metric after collection context has finished, metric: %s", metric)
 		return ctx.Err()
 	default: // continue
 	}
@@ -163,97 +166,71 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ts := time.Now()
 	log.Debugf("Start collecting...")
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	g, ctx := errgroup.WithContext(ctx)
 	defer cancel()
 
 	e.Lock()
 	defer e.Unlock()
-	log.Debugf("Start collecting...2")
 
-	// Get clusters
-	cs, err := e.client.GetClusters()
-	if err != nil {
-		sendSafeMetric(ctx, ch, prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0, e.region))
-		log.Errorf("Error collecting metrics: %v", err)
-		return
-	}
-
-	e.collectClusterMetrics(ctx, ch, cs)
-
-	// Start getting metrics per cluster on its own goroutine
-	errC := make(chan bool)
-	totalCs := 0 // total cluster metrics goroutine ran
-	// prevents too many AWS api requests running in parallel
-	concurrencyGuard := make(chan struct{}, e.maxConcurrency)
-
-	for _, c := range cs {
-		// Filter not desired clusters
-		if !e.validCluster(c) {
-			log.Debugf("Cluster '%s' filtered", c.Name)
-			continue
+	collectMetrics := func(ctx context.Context) error {
+		clusters, err := e.client.GetClusters()
+		if err != nil {
+			return fmt.Errorf("failed listing clusters: %w", err)
 		}
-		totalCs++
-		log.Debugf("Valid cluster found: %s", c.Name)
 
-		// "lock" concurrency guard
-		concurrencyGuard <- struct{}{}
+		e.collectClusterMetrics(ctx, ch, clusters)
 
-		go func(c types.ECSCluster) {
-			// release concurrency guard
-			//defer func() {
-			//	log.Debugf("go routine [%d]: RELEASE", totalCs)
-			//	<-concurrencyGuard
-			//}()
-			log.Debugf("go routine [%d]: 1", totalCs)
-			// Get services
-			ss, err := e.client.GetClusterServices(&c)
-			if err != nil {
-				errC <- true
-				log.Errorf("Error collecting cluster service metrics: %v", err)
-				return
+		sem := semaphore.NewWeighted(e.maxConcurrency)
+
+		for _, cluster := range clusters {
+			// Filter not desired clusters
+			if !e.validCluster(cluster) {
+				log.Debugf("Cluster '%s' filtered", cluster.Name)
+				continue
 			}
-			e.collectClusterServicesMetrics(ctx, ch, &c, ss)
-			log.Debugf("go routine [%d]: 2", totalCs)
+			log.Debugf("Valid cluster found: %s", cluster.Name)
 
-			// Get container instance metrics (if enabled)
-			if e.noCIMetrics {
-				log.Debug("Container instance metrics disabled, no gathering these metrics...")
-				errC <- false
-				return
+			if err := sem.Acquire(ctx, 1); err != nil {
+				return fmt.Errorf("failed to acquire semaphore: %w", err)
 			}
-			log.Debugf("go routine [%d]: 3", totalCs)
+			cluster := cluster // https://golang.org/doc/faq#closures_and_goroutines
+			g.Go(func() error {
+				defer sem.Release(1)
 
-			cs, err := e.client.GetClusterContainerInstances(&c)
-			if err != nil {
-				errC <- true
-				log.Errorf("Error collecting cluster container instance metrics: %v", err)
-				return
-			}
-			e.collectClusterContainerInstancesMetrics(ctx, ch, &c, cs)
-			log.Debugf("go routine [%d]: 4", totalCs)
+				// Get services
+				ss, err := e.client.GetClusterServices(cluster)
+				if err != nil {
+					return fmt.Errorf("failed collecting cluster service metrics: %w", err)
+				}
+				e.collectClusterServicesMetrics(ctx, ch, cluster, ss)
 
-			<-concurrencyGuard
-			errC <- false
-		}(*c)
+				// Get container instance metrics (if enabled)
+				if e.noCIMetrics {
+					log.Debug("Container instance metrics disabled, no gathering these metrics...")
+					return nil
+				}
+
+				cs, err := e.client.GetClusterContainerInstances(cluster)
+				if err != nil {
+					return fmt.Errorf("failed collecting cluster container instance metrics: %w", err)
+				}
+				e.collectClusterContainerInstancesMetrics(ctx, ch, cluster, cs)
+
+				return ctx.Err()
+			})
+		}
+
+		if err := g.Wait(); err != nil {
+			return err
+		}
+		return nil
 	}
 
-	// Grab result or not result error for each goroutine, on first error exit
 	result := float64(1)
-
-ServiceCollector:
-	for i := 0; i < totalCs; i++ {
-		select {
-		case err := <-errC:
-			if err {
-				result = 0
-				break ServiceCollector
-			}
-		case <-time.After(e.timeout):
-			log.Errorf("Error collecting metrics: Timeout making calls, waited for %v  without response", e.timeout)
-			result = 0
-			break ServiceCollector
-		}
-
+	if err := collectMetrics(ctx); err != nil {
+		log.Errorf("Error collecting metrics: %v", err)
+		result = 0
 	}
 	ch <- prometheus.MustNewConstMetric(
 		up, prometheus.GaugeValue, result, e.region,
