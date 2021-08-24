@@ -3,10 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/form3tech-oss/ecs-exporter/log"
 	"os"
 	"regexp"
-
-	"github.com/slok/ecs-exporter/log"
 )
 
 const (
@@ -16,6 +15,8 @@ const (
 	defaultClusterFilter    = ".*"
 	defaultDebug            = false
 	defaultDisableCIMetrics = false
+	defaultCollectTimeout   = 20
+	defaultMaxConcurrency   = 2
 )
 
 // Cfg is the global configuration
@@ -36,6 +37,8 @@ type config struct {
 	clusterFilter    string
 	debug            bool
 	disableCIMetrics bool
+	collectTimeout   int64
+	maxConcurrency   int64
 }
 
 // init will load all the flags
@@ -66,6 +69,12 @@ func new() *config {
 
 	c.fs.BoolVar(
 		&c.disableCIMetrics, "metrics.disable-cinstances", defaultDisableCIMetrics, "Disable clusters container instances metrics gathering")
+
+	c.fs.Int64Var(
+		&c.collectTimeout, "metrics.collect-timeout", defaultCollectTimeout, "The timeout (in seconds) for the whole gathering process")
+
+	c.fs.Int64Var(
+		&c.maxConcurrency, "metrics.max-concurrency", defaultMaxConcurrency, "Max number of go routines to get metrics for cluster")
 
 	return c
 }

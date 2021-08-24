@@ -8,8 +8,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/slok/ecs-exporter/collector"
-	"github.com/slok/ecs-exporter/log"
+	"github.com/form3tech-oss/ecs-exporter/collector"
+	"github.com/form3tech-oss/ecs-exporter/log"
 )
 
 // Main is the application entry point
@@ -29,9 +29,12 @@ func Main() int {
 	if cfg.disableCIMetrics {
 		log.Warnf("Cluster container instance metrics have been disabled")
 	}
+	log.Infof("Config: aws-region=%s, clusterFilter=%s, disableCIMetrics=%t, collectTimeout=%d, maxConcurrency=%d",
+		cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics, cfg.collectTimeout, cfg.maxConcurrency)
 
 	// Create the exporter and register it
-	exporter, err := collector.New(cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics)
+	exporter, err := collector.New(cfg.awsRegion, cfg.clusterFilter, cfg.disableCIMetrics, cfg.collectTimeout,
+		cfg.maxConcurrency)
 	if err != nil {
 		log.Error(err)
 		return 1

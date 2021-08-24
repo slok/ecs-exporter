@@ -15,8 +15,7 @@ require (
 	github.com/prometheus/client_model v0.0.0-20150212101744-fa8ad6fec335
 	github.com/prometheus/common v0.0.0-20161114134743-0d5de9d6d862
 	github.com/prometheus/procfs v0.0.0-20160411190841-abf152e5f3e9 // indirect
-	github.com/slok/ecs-exporter v1.1.1
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
