@@ -4,8 +4,8 @@ FROM golang:1.16-alpine
 RUN apk --update add musl-dev gcc tar git bash wget && rm -rf /var/cache/apk/*
 
 # Create user
-ARG uid=1000
-ARG gid=1000
+ARG uid=2000
+ARG gid=2000
 RUN addgroup -g $gid ecs-exporter
 RUN adduser -D -u $uid -G ecs-exporter ecs-exporter
 

@@ -1,5 +1,5 @@
 # The following are targers that do not exist in the filesystem as real files and should be always executed by make
-.PHONY: default deps base build dev shell start stop image push test build_release dep_update dep_install vet test gogen
+.PHONY: default deps base build dev shell start stop test build_release dep_update dep_install vet test gogen release
 
 # Name of this service/application
 SERVICE_NAME := ecs-exporter
@@ -29,8 +29,7 @@ COMMIT=$(shell git rev-parse --short HEAD)
 TAG ?= $(shell git describe --tags --exact-match)
 
 # The default action of this Makefile is to build the release
-default: build_release
-
+default: vet test build_release
 
 # Build the base docker image which is shared between the development and production images
 base:
@@ -66,7 +65,7 @@ stop:
 
 # Build release, target on /bin
 build_release:build
-		cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c "./build.sh"
+		cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c "./scripts/build.sh"
 
 # ensure dependencies.
 dep_ensure:build
@@ -84,22 +83,6 @@ test:build
 gogen: build
 	cd environment/dev && docker-compose run --rm $(SERVICE_NAME) /bin/bash -c 'go generate `go list ./... | grep -v vendor`'
 
-# Build the production image
-image: base
-	docker build \
-	--label revision=$(COMMIT) \
-	--label branch=$(BRANCH) \
-	-t $(IMAGE_NAME):latest \
-	-f environment/prod/Dockerfile \
-	./
-
-# Will build the image and tag with a release if available
-image-release: image
-ifneq ($(TAG),)
-	docker tag $(IMAGE_NAME):latest $(IMAGE_NAME):$(TAG)
-endif
-
-push: image-release
-	@docker login -u ${DOCKER_HUB_USERNAME} -p ${DOCKER_HUB_PASSWORD} && \
-		docker push $(IMAGE_NAME) && \
-		rm -rf ${HOME}/.docker
+release:
+	@test "${TRAVIS_TAG}" || (echo '$$TRAVIS_TAG required to make a release' && exit 1)
+	@bash -c "./scripts/goreleaser.sh"

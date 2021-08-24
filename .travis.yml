@@ -1,0 +1,20 @@
+if: "(type = pull_request) OR (tag IS present)"
+language: go
+go:
+- 1.16
+services:
+- docker
+git:
+  depth: false
+env:
+  global:
+  - GO111MODULE=on
+deploy:
+- provider: script
+  skip_cleanup: true
+  script: make release
+  on:
+    tags: true
+    condition: $TRAVIS_OS_NAME = linux
+script:
+  - make

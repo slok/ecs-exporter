@@ -1,0 +1,11 @@
+builds:
+  - binary: ecs-exporter
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+archives:
+  -
+    format: zip
