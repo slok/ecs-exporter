@@ -1,11 +1,11 @@
 builds:
-  - binary: ecs-exporter
-    goos:
-      - darwin
-      - linux
-      - windows
-    goarch:
-      - amd64
+  - skip: true
+    binary: bin/ecs-exporter
 archives:
   -
-    format: zip
+    format: binary
+    name_template: "ecs-exporter"
+release:
+  github:
+  extra_files:
+    - glob: ./bin/*
