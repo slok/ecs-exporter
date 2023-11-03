@@ -169,12 +169,18 @@ func (e *ECSClient) GetClusterServices(cluster *types.ECSCluster) ([]*types.ECSS
 			ss := []*types.ECSService{}
 
 			for _, s := range resp.Services {
+				scalableTargets, err := getScalableTargets(e, aws.StringValue(s.ServiceName), aws.StringValue(s.clusterArn))
+				if err != nil {
+					servC <- srvRes{nil, err}
+				}
 				es := &types.ECSService{
 					ID:       aws.StringValue(s.ServiceArn),
 					Name:     aws.StringValue(s.ServiceName),
 					DesiredT: aws.Int64Value(s.DesiredCount),
 					RunningT: aws.Int64Value(s.RunningCount),
 					PendingT: aws.Int64Value(s.PendingCount),
+					MinT: aws.Int64Value(scalableTargets.MinCapacity),
+					MaxT: aws.Int64Value(scalableTargets.MaxCapacity),
 				}
 				ss = append(ss, es)
 			}
@@ -262,4 +268,18 @@ func (e *ECSClient) GetClusterContainerInstances(cluster *types.ECSCluster) ([]*
 	log.Debugf("Got %d container instance on cluster %s", len(ciDescs), cluster.Name)
 
 	return ciDescs, nil
+}
+
+func getScalableTargets(e *ECSClient, serviceName string, clusterArn string) (ScalableTarget, error) {
+	environment := os.Getenv("NODE_ENV")
+	clusterName := clusterArn[strings.LastIndex(clusterArn, "/")+1:]
+	params := &ecs.DescribeScalableTargetsInput{
+		ServiceNamespace: aws.String("ecs"),
+		ResourceIds:      []*string{aws.String("service/" + clusterName + "/" + serviceName + "-" + environment)},
+	}
+	resp, err := e.client.DescribeScalableTargets(params)
+	if err != nil || len(resp.ScalableTargets) == 0 {
+		return ScalableTarget{}, err
+	}
+	return resp.ScalableTargets[0], nil
 }
